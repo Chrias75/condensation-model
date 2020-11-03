@@ -1,7 +1,7 @@
 import numpy as np
 import configparser
-from modules import fluid_properties_air as fpa
-from modules import fluid_properties_water as fpw
+import fluid_properties_air as fpa
+import fluid_properties_water as fpw
 from CoolProp.CoolProp import PropsSI
 from CoolProp.HumidAirProp import HAPropsSI
 from scipy.integrate import quad
