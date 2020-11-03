@@ -1,4 +1,4 @@
-# condensation-model
+# condensation-model (work in progress)
 implementation of a condensation model for comparison with experimental data
 
 calculations based on 
