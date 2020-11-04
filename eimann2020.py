@@ -7,7 +7,7 @@ from CoolProp.HumidAirProp import HAPropsSI
 from scipy.integrate import quad
 
 re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, m_air, m_water, m_cond = [], [], [], [], [], [], [], [], [], [], [], [], []
-b, h, l, p_standard = 0., 0., 0., 0.
+b, h, l, p_standard, theta_a = 0., 0., 0., 0., 0.
 ####################################################################################
 # Input
 ####################################################################################
@@ -42,6 +42,7 @@ if switch == 'config':
     m_water = np.array([cfg_oth.getfloat('massflow_water')])
     m_cond = np.array([cfg_oth.getfloat('massflow_condensate')])
     p_standard = cfg_oth.getfloat('pressure')
+    theta_a = cfg_oth.getfloat('ascending_contact_angle') / (180 * np.pi)
 elif switch == 'dat':
     re = np.loadtxt(data, skiprows=1, usecols=2)
     pr = np.loadtxt(data, skiprows=1, usecols=4)
@@ -65,8 +66,10 @@ elif switch == 'dat':
     h = cfg_dim.getfloat('height')
     l = cfg_dim.getfloat('length')
     p_standard = config['other'].getfloat('pressure')
-    sc = (fpa.moist_air_dynamic_viscosity(t_mean, p_standard, fpa.dewpoint2vapour_pressure(t_mean, t_dp_in))) / \
-         (fpa.diffusion_coefficient(t_mean) * fpa.moist_air_density(p_standard, fpa.dewpoint2vapour_pressure(t_mean, t_dp_in), t_mean))
+    theta_a = config['other'].getfloat('ascending_contact_angle') / (180 * np.pi)
+    sc = (fpa.moist_air_dynamic_viscosity(t_mean, p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in))) / \
+         (fpa.diffusion_coefficient(t_mean) *
+          fpa.moist_air_density(p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in), t_mean))
 else:
     print('switch not set')
     exit(0)
@@ -104,13 +107,13 @@ def Nu_sen(reynolds, prandtl, dia_hydr, length):
         return (1 - gamma) * Nu_lam(2300, prandtl, dia_hydr, length) + gamma * Nu_turb(10000, prandtl, dia_hydr, length)
 
 
-def mass_fraction_interface(pressure, Temp_interface):
+def mass_fraction_interface(pressure, temp_interface):
     """noncondensable gas mass fraction at the gas-liquid interface with the assumption of saturation following the
        Gibbs-Dalton Law as formulated by
        G. Caruso, D. Di Vitale Maio, Heat and mass transfer analogy applied to condensation in the presence of
        noncondensable gases inside inclined tubes, Int. J. Heat Mass Transf. 68 (2014) 401–414,
        doi: 10.1016/j.ijheatmasstransfer.2013.09.049"""
-    p_sat = fpa.temperature2saturation_vapour_pressure(Temp_interface)
+    p_sat = fpa.temperature2saturation_vapour_pressure(temp_interface)
     M_v = fpa.MOLES_MASS_VAPOUR
     M_air = fpa.MOLES_MASS_AIR
     return (pressure - p_sat) / (pressure - (1 - M_v / M_air) * p_sat)
@@ -125,30 +128,22 @@ def Nu_lat(sherwood, prandtl, schmidt, jakob, B_i):
     return sherwood * prandtl * B_i * (schmidt * jakob) ** (-1)
 
 
-def corr_suction_ht(sher, nuss, pran, schm, dp, t_int, t):
-    p_v = fpa.dewpoint2vapour_pressure(t, dp)
+def corr_suction_ht(sher, nuss, pran, schm, rh, t_int, t):
+    p_v = rh * fpa.temperature2saturation_vapour_pressure(t_in)
     c_p = fpa.moist_air_heat_capacity(t, p_standard, p_v)
     c_pv = fpw.heat_capacity(t)
     x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
     x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
     r_t = c_pv / c_p * (sher * pran) / (schm * nuss) * np.log((1 - x_vb) / (1 - x_vi))
-    # print('1: ', c_pv / c_p)
-    # print('2: ', pran / schm)
-    # print('3: ', sher / nuss)
-    # print('4: ', (1 - x_vb) / (1 - x_vi))
-    # print('5: ', r_t)
-    # print('6: ', np.exp(r_t) - 1)
-    return r_t / np.exp(r_t) - 1
+    return -1 * r_t / (np.exp(-r_t) - 1)
 
 
-def corr_fog_ht(sher, nuss, pran, schm, dp, t_int, t):
-    p_v = fpa.dewpoint2vapour_pressure(t, dp)
+def corr_fog_ht(sher, nuss, pran, schm, rh, t_int, t):
+    p_v = rh * fpa.temperature2saturation_vapour_pressure(t_in)
     c_p = fpa.moist_air_heat_capacity(t, p_standard, p_v)
-    # print('c_p: ', c_p)
     x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
     x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
     lmbda = fpw.enthalpy_evaporation(t)
-    # print('lambda: ', lmbda)
     # print('1: ', lmbda / c_p)
     # print('2: ', pran / schm)
     # print('3: ', (x_vb - x_vi) / (t - t_int))
@@ -160,16 +155,16 @@ def corr_fog_ht(sher, nuss, pran, schm, dp, t_int, t):
            (1 + lmbda / c_p * pran / schm * saturation_line_slope(t_int))
 
 
-def corr_suction_mt(dp, t_int, t):
-    p_v = fpa.dewpoint2vapour_pressure(t, dp)
+def corr_suction_mt(rh, t_int, t):
+    p_v = rh * fpa.temperature2saturation_vapour_pressure(t_in)
     x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
     x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
     r_w = (x_vb - x_vi) / (1 - x_vi)
     return np.log(1 - r_w) / (-r_w)
 
 
-def corr_fog_mt(sher, nuss, pran, schm, dp, t_int, t):
-    p_v = fpa.dewpoint2vapour_pressure(t, dp)
+def corr_fog_mt(sher, nuss, pran, schm, rh, t_int, t):
+    p_v = rh * fpa.temperature2saturation_vapour_pressure(t_in)
     c_p = fpa.moist_air_heat_capacity(t, p_standard, p_v)
     x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
     x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
@@ -212,8 +207,8 @@ def correction_factor(r_m):
 
 
 def saturation_line_slope(t):
-    return (fpa.temperature2saturation_vapour_pressure(t + 1e-4) / p_standard -
-            fpa.temperature2saturation_vapour_pressure(t - 1e-4) / p_standard) / 2e-4
+    return (fpa.temperature2saturation_vapour_pressure(t + 1e-4) -
+            fpa.temperature2saturation_vapour_pressure(t - 1e-4)) / (p_standard * 2e-4)
 
 ####################################################################################
 # Droplet Force Balance
@@ -226,11 +221,10 @@ print(d_h / h)
 # gravitational force
 g = 9.81
 rho_c = fpw.density(t_w)
-rho_b = fpa.moist_air_density(p_standard, fpa.dewpoint2vapour_pressure(t_mean, t_dp_in), t_mean)
+rho_b = fpa.moist_air_density(p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in), t_mean)
 
 # surface tension force
 theta_r = 40.65 / (180 * np.pi)
-theta_a = 63.3 / (180 * np.pi)
 gamma = PropsSI('SURFACE_TENSION', 'T', t_mean + 273.15, 'Q', 1, 'Water')
 
 r_max = np.full(re.shape, 0.0015)
@@ -242,7 +236,7 @@ re_d = re * r_max / d_h
 c_d = 0.28 + (6 / np.sqrt(re_d)) + (21 / re_d)
 
 u = re * HAPropsSI('mu', 'T', t_mean + 273.15, 'P', p_standard, 'R', rH) / \
-    (d_h * fpa.moist_air_density(p_standard, fpa.dewpoint2vapour_pressure(t_mean, t_dp_in), t_mean))
+    (d_h * fpa.moist_air_density(p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in), t_mean))
 f_g = np.zeros(re.shape)
 f_s = np.zeros(re.shape)
 f_d = np.zeros(re.shape)
@@ -281,7 +275,7 @@ r_max = np.full(re.shape, 0.0009)
 # initial Interface Temperature
 T_i_start = t_w
 m_ncg = m_air - m_water
-jakob = fpa.moist_air_heat_capacity(t_mean, p_standard, fpa.dewpoint2vapour_pressure(t_mean, t_dp_in)) * \
+jakob = fpa.moist_air_heat_capacity(t_mean, p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in)) * \
         (t_mean - T_i_start) / fpw.enthalpy_evaporation(t_mean)
 # print('Ja: ', jakob)
 """correlations of parameters are added from Eimann, F., Zheng, S., Philipp, C., Omranpoor, A. H., & Gross, U.
@@ -317,13 +311,15 @@ for i, item in enumerate(re):
     while abs(epsilon_2[i]) > 0.05:
         B_i[i] = np.log(mass_fraction_interface(p_standard, T_i[i]) / mass_fraction_bulk(m_ncg[i], m_water[i]))
         h_d[i] = (0.347 * re[i]) / (1 + 1.75 * np.exp(-330.5 * B_i[i]))
-        sh_corr[i] = Sh[i] * corr_fog_mt(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], t_dp_in[i], T_i[i], t_mean[i]) * \
-            corr_suction_mt(t_dp_in[i], T_i[i], t_mean[i])
+        sh_corr[i] = Sh[i] * corr_fog_mt(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i]) * \
+            corr_suction_mt(rH[i], T_i[i], t_mean[i])
         Nu_g[i] = C[i] * (Nu_sen(re[i], pr[i], d_h, l) *
-                          corr_suction_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], t_dp_in[i], T_i[i], t_mean[i]) *
-                          corr_fog_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], t_dp_in[i], T_i[i], t_mean[i])
+                          corr_suction_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i]) *
+                          corr_fog_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i])
                           + Nu_lat(sh_corr[i], pr[i], sc[i], jakob[i], B_i[i]))
-        h_g[i] = Nu_g[i] * fpa.moist_air_thermal_conductivity(T_i[i], p_standard, fpa.dewpoint2vapour_pressure(T_i[i], t_dp_in[i])) / d_h
+        h_g[i] = Nu_g[i] * \
+            fpa.moist_air_thermal_conductivity(T_i[i], p_standard,
+                                               rH[i] * fpa.temperature2saturation_vapour_pressure(t_in[i])) / d_h
         h_t[i] = (1 / h_d[i] + 1 / h_g[i]) ** (-1)
         q_t[i] = h_t[i] * (t_mean[i] - t_w[i])
         t_i[i] = t_w[i] + q_t[i] / h_d[i]
@@ -335,11 +331,11 @@ for i, item in enumerate(re):
         else:
             T_i[i] -= 0.01
 
-sigma_s_h = corr_suction_ht(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, t_dp_in, t_i, t_mean)
-sigma_s_m = corr_suction_mt(t_dp_in, t_i, t_mean)
-sigma_f_h = corr_fog_ht(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, t_dp_in, t_i, t_mean)
-sigma_f_m = corr_fog_mt(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, t_dp_in, t_i, t_mean)
-p_v_in = fpa.dewpoint2vapour_pressure(t_mean, t_dp_in)
+sigma_s_h = corr_suction_ht(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean)
+sigma_s_m = corr_suction_mt(rH, t_i, t_mean)
+sigma_f_h = corr_fog_ht(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean)
+sigma_f_m = corr_fog_mt(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean)
+p_v_in = rH * fpa.temperature2saturation_vapour_pressure(t_in)
 x_bs, x_b = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_mean)
 x_is, x_i = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_i)
 print('dp/dt: ', saturation_line_slope(t_i))
