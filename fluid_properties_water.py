@@ -55,17 +55,17 @@ def dynamic_viscosity(temperature):
 def heat_capacity(temperature):
     """
     FUNCTION:
-        dynamic_viscosity
+        heat_capacity
 
     DESCRIPTION:
-        dynamic viscosity as a function of the temperature
+        heat capacity as a function of the temperature
 
     INPUT:
         temperature                 : temperature [C]
 
 
     RETURNS:
-        dynamic viscosity           : dynamic viscosity [N s / m^2]
+        heat capacity           : c_p [J / (kg * K)]
     """
     __temp = temperature + 273.15
     __p2__ = [3.34656282e-06, -4.46672225e-03, 2.23957021e+00, -4.99435662e+02, 4.59421964e+04]

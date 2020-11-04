@@ -138,6 +138,15 @@ def saturation_line_slope(t):
     return (fpa.temperature2saturation_vapour_pressure(t + 1e-4) -
             fpa.temperature2saturation_vapour_pressure(t - 1e-4)) / (p_standard * 2e-4)
 
+
+def c_p_mixture(x, t):
+    """gives the molar specific heat capacity of humid air with a water mass fraction x"""
+    c_pg = fpa.dry_air_heat_capacity(t) * fpa.MOLES_MASS_AIR
+    print(c_pg)
+    c_pv = fpw.heat_capacity(t) * fpa.MOLES_MASS_VAPOUR
+    print(c_pv)
+    return (1 - x) * c_pg + x * c_pv
+
 ####################################################################################
 # Droplet Force Balance
 ####################################################################################
@@ -196,7 +205,7 @@ print(r_max)
 print('f_g: ', f_g)
 print('f_s: ', f_s)
 print('f_d: ', f_d)
-# r_max = np.full(re.shape, 0.0009)
+# r_max = np.full(re.shape, 0.0013)
 ####################################################################################
 # Iteration
 ####################################################################################
@@ -221,6 +230,8 @@ C = np.vectorize(correction_factor)(r_max)
 print('C: ', C)
 # Sherwood is gained analogously to Nusselt number with Schmidt instead of Prandtl number
 Sh = np.vectorize(Nu_sen)(re, sc, d_h, l)
+Nu_0 = np.vectorize(Nu_sen)(re, pr, d_h, l)
+print('Nu_0: ', Nu_0)
 print('Sh: ', Sh)
 print('Sc: ', sc)
 print('Pr: ', pr)
@@ -266,6 +277,7 @@ sigma_f_m = corr_fog_mt(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_
 p_v_in = rH * fpa.temperature2saturation_vapour_pressure(t_in)
 x_bs, x_b = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_mean)
 x_is, x_i = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_i)
+print('test: ', c_p_mixture(x_b, 94.))
 print('dp/dt: ', saturation_line_slope(t_i))
 print('tangency: ', sigma_f_m / sigma_f_h * Sh / np.vectorize(Nu_sen)(re, pr, d_h, l) * (x_b - x_i) / (t_mean - t_i))
 print('suction_ht:', sigma_s_h)

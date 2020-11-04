@@ -40,14 +40,15 @@ def read(config_file, data_file=None, switch='config'):
             mf_bulk = mf.mass_fraction_bulk(m_air - m_water, m_water)
         except KeyError:
             print('using mass fraction')
-        try:
-            cfg_mf = config['mass_fraction']
-            mf_int = np.array(cfg_mf.getfloat('mass_fraction_interface'))
-            mf_bulk = np.array(cfg_mf.getfloat('mass_fraction_bulk'))
-        except KeyError:
-            print('no mass flow or mass fractions were given.')
-            exit(0)
-            mf_int, mf_bulk = [], []
+            mf_int, mf_bulk = None, None
+        if mf_int is None:
+            try:
+                cfg_mf = config['mass_fraction']
+                mf_int = np.array(cfg_mf.getfloat('mass_fraction_interface'))
+                mf_bulk = np.array(cfg_mf.getfloat('mass_fraction_bulk'))
+            except KeyError:
+                print('no mass flow or mass fractions were given.')
+                mf_int, mf_bulk = [], []
 
         return re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, \
             rh, mf_int, mf_bulk, b, h, l, p_standard, theta_a
