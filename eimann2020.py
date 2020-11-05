@@ -72,13 +72,18 @@ def corr_fog_ht(sher, nuss, pran, schm, rh, t_int, t):
     x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
     x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
     lmbda = fpw.enthalpy_evaporation(t)
+    # c_p_alt = c_p_mixture(x_vb, t)
+    # lmbda_mol = lmbda * fpa.MOLES_MASS_VAPOUR
+    # print('1_mol: ', lmbda_mol / c_p_alt)
     # print('1: ', lmbda / c_p)
     # print('2: ', pran / schm)
     # print('3: ', (x_vb - x_vi) / (t - t_int))
     # print('4: ', sher / nuss)
     # print('5: ', saturation_line_slope(t_int))
-    # print('6: ', (1 + lmbda / c_p * pran / schm * (x_vb - x_vi) / (t - t_int) * sher / nuss))
-    # print('7: ', (1 + lmbda / c_p * pran / schm * saturation_line_slope(t_int)))
+    # print('6: ', (lmbda / c_p * pran / schm * 2 * (x_vb - x_vi) / (t - t_int) * sher / nuss))
+    # print('7: ', (lmbda / c_p * pran / schm * saturation_line_slope(t_int)))
+    # print('8: ', ((lmbda / c_p * pran / schm * 2 * (x_vb - x_vi) / (t - t_int) * sher / nuss) ** -1))
+    # print('9: ', ((lmbda / c_p * pran / schm * saturation_line_slope(t_int)) ** -1))
     return (1 + lmbda / c_p * pran / schm * (x_vb - x_vi) / (t - t_int) * sher / nuss) / \
            (1 + lmbda / c_p * pran / schm * saturation_line_slope(t_int))
 
@@ -97,6 +102,8 @@ def corr_fog_mt(sher, nuss, pran, schm, rh, t_int, t):
     x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
     x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
     lmbda = fpw.enthalpy_evaporation(t)
+    # c_p_alt = c_p_mixture(x_vb, t)
+    # lmbda_mol = lmbda * fpa.MOLES_MASS_VAPOUR
     return (1 + (lmbda / c_p * pran / schm * (x_vb - x_vi) / (t - t_int) * sher / nuss) ** -1) / \
            (1 + (lmbda / c_p * pran / schm * saturation_line_slope(t_int)) ** -1)
 
@@ -139,6 +146,14 @@ def saturation_line_slope(t):
             fpa.temperature2saturation_vapour_pressure(t - 1e-4)) / (p_standard * 2e-4)
 
 
+def saturation_line_bruowers(t):
+    """slope of the saturation line as given in Brouwers, H.J.H., Effect of Fog Formation on Turbulent Vapor
+       Condensation with Noncondensable Gases, 1996
+       P_v(T) given by Reid et al, The Properties of Gases and Liquids, pp 629, 632,  1977"""
+    return (np.exp(11.6834 - 3816.44 / (227.02 + (t + 1e-4))) - np.exp(11.6834 - 3816.44 / (227.02 + (t - 1e-4)))) / \
+           ((p_standard * 1e-5) * 2e-4)
+
+
 def c_p_mixture(x, t):
     """gives the molar specific heat capacity of humid air with a water mass fraction x"""
     c_pg = fpa.dry_air_heat_capacity(t) * fpa.MOLES_MASS_AIR
@@ -152,7 +167,6 @@ def c_p_mixture(x, t):
 ####################################################################################
 
 
-# r_max = 0.009
 d_h = (4 * b * h) / (2 * b + 2 * h)
 print(d_h / h)
 # gravitational force
@@ -238,9 +252,9 @@ print('Pr: ', pr)
 # print(re.shape)
 
 # h_d, Nu_g, B_i, h_g, h_t, q_t, t_i = 0., 0., 0., 0., 0., 0., 0.
-h_d, Nu_g, B_i, h_g, h_t, q_t, t_i, sh_corr = np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape), \
-                                              np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape), \
-                                              np.zeros(re.shape), np.zeros(re.shape)
+h_d, Nu_g, B_i, h_g, h_t, q_t, t_i, sh_corr, nu_corr = np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape), \
+                                                       np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape), \
+                                                       np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape)
 
 T_i = np.array(T_i_start)
 epsilon_2 = np.ones(re.shape)
@@ -248,14 +262,21 @@ for i, item in enumerate(re):
     # print(i)
     # print('Re: ', item)
     while abs(epsilon_2[i]) > 0.05:
-        B_i[i] = np.log(mf.mass_fraction_interface(p_standard, T_i[i]) / mf_bulk)
+        B_i[i] = np.log(mf.mass_fraction_interface(p_standard, T_i[i]) / mf_bulk[i])
+        print('mf_int: ', mf.mass_fraction_interface(p_standard, T_i[i]))
+        print('mf_bulk: ', mf_bulk[i])
         h_d[i] = (0.347 * re[i]) / (1 + 1.75 * np.exp(-330.5 * B_i[i]))
-        sh_corr[i] = Sh[i] * corr_fog_mt(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i]) *\
-            corr_suction_mt(rH[i], T_i[i], t_mean[i])
-        Nu_g[i] = C[i] * (Nu_sen(re[i], pr[i], d_h, l) *
-                          corr_suction_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i]) *
-                          corr_fog_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i])
-                          + Nu_lat(sh_corr[i], pr[i], sc[i], jakob[i], B_i[i]))
+        # sh_corr[i] = Sh[i] * \
+        #     corr_fog_mt(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i]) * \
+        #     corr_suction_mt(rH[i], T_i[i], t_mean[i])
+        # nu_corr[i] = Nu_sen(re[i], pr[i], d_h, l) * \
+        #     corr_suction_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i]) * \
+        #     corr_fog_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i])
+        sh_corr[i] = Sh[i] * \
+                     corr_suction_mt(rH[i], T_i[i], t_mean[i])
+        nu_corr[i] = Nu_sen(re[i], pr[i], d_h, l) * \
+                     corr_suction_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i])
+        Nu_g[i] = C[i] * (nu_corr[i] + Nu_lat(sh_corr[i], pr[i], sc[i], jakob[i], B_i[i]))
         h_g[i] = Nu_g[i] * \
             fpa.moist_air_thermal_conductivity(T_i[i], p_standard,
                                                rH[i] * fpa.temperature2saturation_vapour_pressure(t_in[i])) / d_h
@@ -277,8 +298,9 @@ sigma_f_m = corr_fog_mt(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_
 p_v_in = rH * fpa.temperature2saturation_vapour_pressure(t_in)
 x_bs, x_b = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_mean)
 x_is, x_i = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_i)
-print('test: ', c_p_mixture(x_b, 94.))
+# print('test: ', c_p_mixture(0.804, 94.))
 print('dp/dt: ', saturation_line_slope(t_i))
+# print('dp/dt(Brouwers): ', saturation_line_bruowers(t_i))
 print('tangency: ', sigma_f_m / sigma_f_h * Sh / np.vectorize(Nu_sen)(re, pr, d_h, l) * (x_b - x_i) / (t_mean - t_i))
 print('suction_ht:', sigma_s_h)
 print('fog_ht', sigma_f_h)
