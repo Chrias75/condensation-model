@@ -16,8 +16,8 @@ import mass_fractions as mf
 config_file = 'model_config.cfg'
 data = '/home/brue_ch/Auswertungen/rH_variable/Profil/data_rH_2000_27_5.dat'
 result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_r-mod_2000_27_5.dat'
-re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, \
- rH, mf_int, mf_bulk, b, h, l, p_standard, theta_a = read_config.read(config_file, result_filename, switch='config')
+re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, mf_int, \
+ mf_bulk, b, h, l, p_standard, theta_a, theta_r = read_config.read(config_file, result_filename, switch='config')
 ####################################################################################
 # Functions
 ####################################################################################
@@ -162,6 +162,13 @@ def c_p_mixture(x, t):
     print(c_pv)
     return (1 - x) * c_pg + x * c_pv
 
+
+def log_mean(x, y):
+    x = np.array(x)
+    y = np.array(y)
+    __logmean = (np.maximum(x, y) - np.minimum(x, y)) / (np.log((np.maximum(x, y)) / (np.minimum(x, y))))
+    return __logmean
+
 ####################################################################################
 # Droplet Force Balance
 ####################################################################################
@@ -174,8 +181,7 @@ g = 9.81
 rho_c = fpw.density(t_w)
 rho_b = fpa.moist_air_density(p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in), t_mean)
 
-# surface tension force
-theta_r = 40.65 / (180 * np.pi)
+# surface tension
 surf_tens = np.array([PropsSI('SURFACE_TENSION', 'T', t_mean + 273.15, 'Q', 1, 'Water')])
 
 r_max = np.full(re.shape, 0.0015)
