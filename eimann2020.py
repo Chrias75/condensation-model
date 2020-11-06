@@ -58,7 +58,7 @@ def Nu_lat(sherwood, prandtl, schmidt, jakob, B_i):
 
 
 def corr_suction_ht(sher, nuss, pran, schm, rh, t_int, t):
-    p_v = rh * fpa.temperature2saturation_vapour_pressure(t_in)
+    p_v = rh * fpa.temperature2saturation_vapour_pressure(t)
     c_p = fpa.moist_air_heat_capacity(t, p_standard, p_v)
     c_pv = fpw.heat_capacity(t)
     x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
@@ -68,7 +68,7 @@ def corr_suction_ht(sher, nuss, pran, schm, rh, t_int, t):
 
 
 def corr_fog_ht(sher, nuss, pran, schm, rh, t_int, t):
-    p_v = rh * fpa.temperature2saturation_vapour_pressure(t_in)
+    p_v = rh * fpa.temperature2saturation_vapour_pressure(t)
     c_p = fpa.moist_air_heat_capacity(t, p_standard, p_v)
     x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
     x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
@@ -90,7 +90,7 @@ def corr_fog_ht(sher, nuss, pran, schm, rh, t_int, t):
 
 
 def corr_suction_mt(rh, t_int, t):
-    p_v = rh * fpa.temperature2saturation_vapour_pressure(t_in)
+    p_v = rh * fpa.temperature2saturation_vapour_pressure(t)
     x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
     x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
     r_w = (x_vb - x_vi) / (1 - x_vi)
@@ -98,7 +98,7 @@ def corr_suction_mt(rh, t_int, t):
 
 
 def corr_fog_mt(sher, nuss, pran, schm, rh, t_int, t):
-    p_v = rh * fpa.temperature2saturation_vapour_pressure(t_in)
+    p_v = rh * fpa.temperature2saturation_vapour_pressure(t)
     c_p = fpa.moist_air_heat_capacity(t, p_standard, p_v)
     x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
     x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
