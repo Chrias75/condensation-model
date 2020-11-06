@@ -4,6 +4,13 @@ import fluid_properties_air as fpa
 import mass_fractions as mf
 
 
+def log_mean(x, y):
+    x = np.array(x)
+    y = np.array(y)
+    __logmean = (np.maximum(x, y) - np.minimum(x, y)) / (np.log((np.maximum(x, y)) / (np.minimum(x, y))))
+    return __logmean
+
+
 def read(config_file, data_file=None, switch='config'):
     if switch == 'config':
         config = configparser.ConfigParser()
@@ -72,7 +79,8 @@ def read(config_file, data_file=None, switch='config'):
         t_mean = np.loadtxt(data_file, skiprows=1, usecols=32)
         t_dp_in = np.loadtxt(data_file, skiprows=1, usecols=34)
         t_dp_out = np.loadtxt(data_file, skiprows=1, usecols=36)
-        rh = np.loadtxt(data_file, skiprows=1, usecols=45)
+        # rh = np.loadtxt(data_file, skiprows=1, usecols=45)
+        rh = fpa.relativehumidity(t_mean, log_mean(t_dp_in, t_dp_out))
     
         m_air = np.loadtxt(data_file, skiprows=1, usecols=50)
         m_water = np.loadtxt(data_file, skiprows=1, usecols=40)

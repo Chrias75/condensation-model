@@ -133,6 +133,15 @@ def f_drag(r_d, density, v, c_drag, theta_max, theta_min, beta):
 
 
 def correction_factor(r_m):
+    """correlations of parameters are added from Eimann, F., Zheng, S., Philipp, C., Omranpoor, A. H., & Gross, U.
+       (2020). Dropwise condensation of humid air - Experimental investigation and modelling of the convective heat
+       transfer. Int. Journal of Heat and Mass Transfer, 154
+       https://doi.org/10.1016/j.ijheatmasstransfer.2020.119734
+       C   :    correction factor for droplet/film. correlation of predicted and measured droplet maximum radius for
+                hemispherical droplets (0.2 mm < r_max < 1.61 mm)
+       h_d :    drop heat coefficient correlation (for 2000 < Re < 21400) based on thermographic measurements
+
+    """
     r_d = r_m * 1000
     if r_d <= 1.3:
         __c = 0.28 * r_d + 1.155
@@ -235,15 +244,6 @@ T_i_start = t_w
 jakob = fpa.moist_air_heat_capacity(t_mean, p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in)) * \
         (t_mean - T_i_start) / fpw.enthalpy_evaporation(t_mean)
 print('Ja: ', jakob)
-"""correlations of parameters are added from Eimann, F., Zheng, S., Philipp, C., Omranpoor, A. H., & Gross, U.
-   (2020). Dropwise condensation of humid air - Experimental investigation and modelling of the convective heat
-   transfer. Int. Journal of Heat and Mass Transfer, 154
-   https://doi.org/10.1016/j.ijheatmasstransfer.2020.119734
-   C   :    correction factor for droplet/film. correlation of predicted and measured droplet maximum radius for
-            hemispherical droplets (0.2 mm < r_max < 1.61 mm)
-   h_d :    drop heat coefficient correlation (for 2000 < Re < 21400) based on thermographic measurements
-   
-"""
 
 
 C = np.vectorize(correction_factor)(r_max)
