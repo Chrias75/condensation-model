@@ -13,11 +13,12 @@ import mass_fractions as mf
 # Input
 ####################################################################################
 
-config_file = 'model_config.cfg'
+# config_file = 'model_config.cfg'
+config_file = 'experiment_config.cfg'
 data = '/home/brue_ch/Auswertungen/rH_variable/Profil/data_rH_2000_27_5.dat'
-result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_r-mod_2000_27_5.dat'
+result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_2000_27_5.dat'
 re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, mf_int, \
- mf_bulk, b, h, l, p_standard, theta_a, theta_r = read_config.read(config_file, result_filename, switch='config')
+ mf_bulk, b, h, l, p_standard, theta_a, theta_r = read_config.read(config_file, data, switch='dat')
 ####################################################################################
 # Functions
 ####################################################################################
@@ -191,7 +192,7 @@ rho_c = fpw.density(t_w)
 rho_b = fpa.moist_air_density(p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in), t_mean)
 
 # surface tension
-surf_tens = np.array([PropsSI('SURFACE_TENSION', 'T', t_mean + 273.15, 'Q', 1, 'Water')])
+surf_tens = PropsSI('SURFACE_TENSION', 'T', t_mean + 273.15, 'Q', 1, 'Water')
 
 r_max = np.full(re.shape, 0.0015)
 bo = rho_c * g * (2 * r_max) ** 2 / surf_tens
@@ -220,7 +221,10 @@ for i, item in enumerate(re):
         re_d[i] = re[i] * r_max[i] / d_h
         c_d[i] = 0.28 + (6 / np.sqrt(re_d[i])) + (21 / re_d[i])
         f_g[i] = f_grav(r_max[i], rho_c[i])
-        f_s[i] = f_surf_tens(r_max[i], surf_tens[i], theta_a, theta_m)
+        try:
+            f_s[i] = f_surf_tens(r_max[i], surf_tens[i], theta_a, theta_m)
+        except TypeError:
+            f_s[i] = f_surf_tens(r_max[i], np.array([surf_tens])[i], theta_a, theta_m)
         # print(f_s[i])
         f_d[i] = f_drag(r_max[i], rho_b[i], u[i], c_d[i], theta_a, theta_m, beta[i])
         epsilon_1[i] = f_g[i] ** 2 + f_d[i] ** 2 + f_s[i] ** 2
@@ -229,7 +233,7 @@ for i, item in enumerate(re):
             r_max[i] += 0.00001
         else:
             r_max[i] -= 0.00001
-print(r_max)
+print('r_max: ', r_max)
 # print('eps: ', epsilon_1)
 print('f_g: ', f_g)
 print('f_s: ', f_s)
@@ -261,8 +265,10 @@ print('Pr: ', pr)
 h_d, Nu_g, B_i, h_g, h_t, q_t, t_i, sh_corr, nu_corr = np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape), \
                                                        np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape), \
                                                        np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape)
-
+print('t_mean: ', t_mean)
+print('rh: ', rH)
 T_i = np.array(T_i_start)
+print('T_i: ', T_i)
 epsilon_2 = np.ones(re.shape)
 for i, item in enumerate(re):
     # print(i)
@@ -278,10 +284,9 @@ for i, item in enumerate(re):
         # nu_corr[i] = Nu_sen(re[i], pr[i], d_h, l) * \
         #     corr_suction_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i]) * \
         #     corr_fog_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i])
-        sh_corr[i] = Sh[i] * \
-                     corr_suction_mt(rH[i], T_i[i], t_mean[i])
+        sh_corr[i] = Sh[i] * corr_suction_mt(rH[i], T_i[i], t_mean[i])
         nu_corr[i] = Nu_sen(re[i], pr[i], d_h, l) * \
-                     corr_suction_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i])
+            corr_suction_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i])
         Nu_g[i] = C[i] * (nu_corr[i] + Nu_lat(sh_corr[i], pr[i], sc[i], jakob[i], B_i[i]))
         h_g[i] = Nu_g[i] * \
             fpa.moist_air_thermal_conductivity(T_i[i], p_standard,
