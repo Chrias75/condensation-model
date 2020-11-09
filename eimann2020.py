@@ -14,11 +14,11 @@ import mass_fractions as mf
 ####################################################################################
 
 # config_file = 'model_config.cfg'
-config_file = 'experiment_config.cfg'
-data = '/home/brue_ch/Auswertungen/rH_variable/Profil/data_rH_2000_27_5.dat'
-result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_2000_27_5.dat'
+config_file = 'model_config.cfg'
+data = '/home/brue_ch/Auswertungen/rH_variable/Profil/data_rH_variable_all.dat'
+result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_modell.dat'
 re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, mf_int, \
- mf_bulk, b, h, l, p_standard, theta_a, theta_r = read_config.read(config_file, data, switch='dat')
+ mf_bulk, b, h, l, p_standard, theta_a, theta_r = read_config.read(config_file, data_file=None, switch='config')
 ####################################################################################
 # Functions
 ####################################################################################
@@ -194,7 +194,7 @@ rho_b = fpa.moist_air_density(p_standard, rH * fpa.temperature2saturation_vapour
 # surface tension
 surf_tens = PropsSI('SURFACE_TENSION', 'T', t_mean + 273.15, 'Q', 1, 'Water')
 
-r_max = np.full(re.shape, 0.0015)
+r_max = np.full(re.shape, 0.0012)
 bo = rho_c * g * (2 * r_max) ** 2 / surf_tens
 
 beta = 1 + 0.096 * bo
@@ -213,8 +213,11 @@ epsilon_1 = np.ones(re.shape)
 for i, item in enumerate(re):
     # print(i)
     # print('Re: ', item)
-    while abs(epsilon_1[i]) > 1e-9:
-        bo[i] = rho_c[i] * g * (2 * r_max[i]) ** 2 / surf_tens[i]
+    while abs(epsilon_1[i]) > 1e-12:
+        try:
+            bo[i] = rho_c[i] * g * (2 * r_max[i]) ** 2 / surf_tens[i]
+        except IndexError:
+            bo[i] = rho_c[i] * g * (2 * r_max[i]) ** 2 / np.array([surf_tens])[i]
         # print(bo)
         beta[i] = 1 + 0.096 * bo[i]
         theta_m = theta_a * (0.01 * bo[i] ** 2 - 0.155 * bo[i] + 0.97)
@@ -225,20 +228,25 @@ for i, item in enumerate(re):
             f_s[i] = f_surf_tens(r_max[i], surf_tens[i], theta_a, theta_m)
         except TypeError:
             f_s[i] = f_surf_tens(r_max[i], np.array([surf_tens])[i], theta_a, theta_m)
+        except IndexError:
+            f_s[i] = f_surf_tens(r_max[i], np.array([surf_tens])[i], theta_a, theta_m)
         # print(f_s[i])
         f_d[i] = f_drag(r_max[i], rho_b[i], u[i], c_d[i], theta_a, theta_m, beta[i])
-        epsilon_1[i] = f_g[i] ** 2 + f_d[i] ** 2 + f_s[i] ** 2
+        epsilon_1[i] = f_g[i] ** 2 + f_d[i] ** 2 - f_s[i] ** 2
+        # epsilon_1[i] = f_g[i] + f_d[i] + f_s[i]
         # print('eps: ', epsilon_1)
         if epsilon_1[i] < 0.:
-            r_max[i] += 0.00001
+            r_max[i] += 0.000001
         else:
-            r_max[i] -= 0.00001
+            r_max[i] -= 0.000001
 print('r_max: ', r_max)
+print('Bo: ', bo)
 # print('eps: ', epsilon_1)
 print('f_g: ', f_g)
 print('f_s: ', f_s)
 print('f_d: ', f_d)
-# r_max = np.full(re.shape, 0.0013)
+# r_max = np.full(re.shape, 0.0012)
+exit(0)
 ####################################################################################
 # Iteration
 ####################################################################################
@@ -275,8 +283,8 @@ for i, item in enumerate(re):
     # print('Re: ', item)
     while abs(epsilon_2[i]) > 0.05:
         B_i[i] = np.log(mf.mass_fraction_interface(p_standard, T_i[i]) / mf_bulk[i])
-        print('mf_int: ', mf.mass_fraction_interface(p_standard, T_i[i]))
-        print('mf_bulk: ', mf_bulk[i])
+        # print('mf_int: ', mf.mass_fraction_interface(p_standard, T_i[i]))
+        # print('mf_bulk: ', mf_bulk[i])
         h_d[i] = (0.347 * re[i]) / (1 + 1.75 * np.exp(-330.5 * B_i[i]))
         # sh_corr[i] = Sh[i] * \
         #     corr_fog_mt(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i]) * \
@@ -307,6 +315,7 @@ sigma_s_m = corr_suction_mt(rH, t_i, t_mean)
 sigma_f_h = corr_fog_ht(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean)
 sigma_f_m = corr_fog_mt(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean)
 p_v_in = rH * fpa.temperature2saturation_vapour_pressure(t_in)
+p_v_mean = rH * fpa.temperature2saturation_vapour_pressure(t_mean)
 x_bs, x_b = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_mean)
 x_is, x_i = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_i)
 # print('test: ', c_p_mixture(0.804, 94.))
@@ -327,14 +336,16 @@ print('Nu_g: ', Nu_g)
 print('h_d: ', h_d)
 print('h_g: ', h_g)
 print('h_t: ', h_t)
+nu_t = h_t * d_h / fpa.moist_air_thermal_conductivity(t_mean, p_standard, p_v_mean)
+print('Nu_t: ', nu_t)
 print('q_t: ', q_t)
 
-wdata = [[re], [pr], [nu_pt], [Nu_g], [Sh], [h_t], [h_d], [h_g], [q_t], [t_in], [t_out], [t_i], [t_dp_in],
+wdata = [[re], [pr], [nu_pt], [Nu_g], [nu_t], [Sh], [h_t], [h_d], [h_g], [q_t], [t_in], [t_out], [t_i], [t_dp_in],
          [t_dp_out], [rH], [r_max]]
-wdata = np.reshape(wdata, (16, re.shape[0]))
+wdata = np.reshape(wdata, (17, re.shape[0]))
 wdata = wdata.T
 __f = open(result_filename, 'w')
-__f.write('Re Pr Nu_lat Nu_g Sh h_t h_d h_g q_t T_in T_out T_i T_dp_in T_dp_out rH r_max\n')
+__f.write('Re Pr Nu_lat Nu_g Nu_t Sh h_t h_d h_g q_t T_in T_out T_i T_dp_in T_dp_out rH r_max\n')
 for __l in wdata:
     __l = str(__l)
     __l = __l.replace('[', '')

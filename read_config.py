@@ -59,7 +59,7 @@ def read(config_file, data_file=None, switch='config'):
                 mf_int, mf_bulk = [], []
 
         return re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, \
-            rh, mf_int, mf_bulk, b, h, l, p_standard, theta_a
+            rh, mf_int, mf_bulk, b, h, l, p_standard, theta_a, theta_r
     elif switch == 'dat' and data_file is not None:
         config = configparser.ConfigParser()
         config.read(config_file)
