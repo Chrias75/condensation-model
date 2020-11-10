@@ -6,6 +6,7 @@ from CoolProp.CoolProp import PropsSI
 from CoolProp.HumidAirProp import HAPropsSI
 from scipy.integrate import quad
 import mass_fractions as mf
+import matplotlib.pyplot as plt
 
 # re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, m_air, m_water, m_cond = [], [], [], [], [], [], [], [], [], [], [], [], []
 # b, h, l, p_standard, theta_a = 0., 0., 0., 0., 0.
@@ -114,23 +115,23 @@ def cos_theta(phi, theta_max, theta_min):
             (3 * (np.cos(theta_max) - np.cos(theta_min)) * phi ** 2 / np.pi ** 2) + np.cos(theta_max)) * np.cos(phi)
 
 
-def zeta(phi, d, beta):
-    return ((abs(np.cos(phi)) / d) ** 3 + (abs(beta * np.sin(phi)) / d) ** 3) ** (-1 / 3)
+def zeta(phi, d, aspect_ratio):
+    return ((abs(np.cos(phi)) / d) ** 3 + (abs(aspect_ratio * np.sin(phi)) / d) ** 3) ** (-1 / 3)
 
 
-def f_grav(r_d, density):
-    return density * 9.81 * 2 / 3 * np.pi * r_d ** 3
+def f_grav(r_d, density_cond):
+    return density_cond * 9.81 * 2 / 3 * np.pi * r_d ** 3
 
 
 def f_surf_tens(r_d, gamma, theta_max, theta_min):
     return r_d * gamma * quad(cos_theta, 0., 2. * np.pi, args=(theta_max, theta_min,))[0]
 
 
-def f_drag(r_d, density, v, c_drag, theta_max, theta_min, beta):
+def f_drag(r_d, density_air, v, coef_drag, theta_max, theta_min, aspect_ratio):
     l_f = np.sin(theta_max) * (1 - np.cos(theta_min)) / (np.sin(theta_min) * (1 - np.cos(theta_max)))
-    return r_d ** 2 * 0.5 * density * v ** 2 * c_drag / (1 + l_f) ** 2 * \
-        (l_f ** 2 * theta_min / np.sin(beta) ** 2 + l_f ** 2 / np.tan(beta) + theta_min / np.sin(theta_min) ** 2 -
-         1 / np.tan(theta_min))
+    return r_d ** 2 * 0.5 * density_air * v ** 2 * coef_drag / ((1 + l_f) ** 2) * \
+        (l_f ** 2 * theta_min / (np.sin(aspect_ratio) ** 2) + l_f ** 2 / np.tan(aspect_ratio) +
+         theta_min / (np.sin(theta_min) ** 2) - 1 / np.tan(theta_min))
 
 
 def correction_factor(r_m):
@@ -173,6 +174,11 @@ def c_p_mixture(x, t):
     return (1 - x) * c_pg + x * c_pv
 
 
+def c_drag(r_d, rey, d_hyd):
+    re_drop = rey * r_d / d_hyd
+    return 0.28 + (6 / np.sqrt(re_drop)) + (21 / re_drop)
+
+
 def log_mean(x, y):
     x = np.array(x)
     y = np.array(y)
@@ -194,13 +200,16 @@ rho_b = fpa.moist_air_density(p_standard, rH * fpa.temperature2saturation_vapour
 # surface tension
 surf_tens = PropsSI('SURFACE_TENSION', 'T', t_mean + 273.15, 'Q', 1, 'Water')
 
-r_max = np.full(re.shape, 0.0012)
+r_max = np.full(re.shape, 0.012)
 bo = rho_c * g * (2 * r_max) ** 2 / surf_tens
+print('Bo_0: ', bo)
 
 beta = 1 + 0.096 * bo
+half_d = beta * r_max
+print('beta: ', beta)
 theta_m = theta_a * (0.01 * bo ** 2 - 0.155 * bo + 0.97)
-re_d = re * r_max / d_h
-c_d = 0.28 + (6 / np.sqrt(re_d)) + (21 / re_d)
+c_d = c_drag(r_max, re, d_h)
+print('C_d: ', c_d)
 
 u = re * HAPropsSI('mu', 'T', t_mean + 273.15, 'P', p_standard, 'R', rH) / \
     (d_h * fpa.moist_air_density(p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in), t_mean))
@@ -209,11 +218,27 @@ f_g = np.zeros(re.shape)
 f_s = np.zeros(re.shape)
 f_d = np.zeros(re.shape)
 
+ar_test = np.linspace(0.00000001, 2.0e-3, 2000)
+plt.figure(1)
+plt.plot(ar_test, f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m, beta), label='F_d')
+plt.plot(ar_test, f_grav(ar_test, rho_c), label='F_g')
+plt.plot(ar_test, f_surf_tens(ar_test, surf_tens, theta_a, theta_m), label='F_s')
+plt.legend(loc=2)
+plt.figure(2)
+plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m, beta) ** 2
+                   + f_grav(ar_test, rho_c) ** 2
+                   - f_surf_tens(ar_test, surf_tens, theta_a, theta_m)) ** 2, label='sum F')
+# plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m, beta)
+#                    + f_grav(ar_test, rho_c)
+#                    - abs(f_surf_tens(ar_test, surf_tens, theta_a, theta_m, half_d, beta))), label='sum F')
+plt.legend(loc=2)
+plt.show()
+
 epsilon_1 = np.ones(re.shape)
 for i, item in enumerate(re):
     # print(i)
     # print('Re: ', item)
-    while abs(epsilon_1[i]) > 1e-12:
+    while abs(epsilon_1[i]) > 1e-18:
         try:
             bo[i] = rho_c[i] * g * (2 * r_max[i]) ** 2 / surf_tens[i]
         except IndexError:
@@ -221,8 +246,7 @@ for i, item in enumerate(re):
         # print(bo)
         beta[i] = 1 + 0.096 * bo[i]
         theta_m = theta_a * (0.01 * bo[i] ** 2 - 0.155 * bo[i] + 0.97)
-        re_d[i] = re[i] * r_max[i] / d_h
-        c_d[i] = 0.28 + (6 / np.sqrt(re_d[i])) + (21 / re_d[i])
+        c_d[i] = c_drag(r_max[i], re[i], d_h)
         f_g[i] = f_grav(r_max[i], rho_c[i])
         try:
             f_s[i] = f_surf_tens(r_max[i], surf_tens[i], theta_a, theta_m)
@@ -239,6 +263,7 @@ for i, item in enumerate(re):
             r_max[i] += 0.000001
         else:
             r_max[i] -= 0.000001
+print('eps: ', epsilon_1)
 print('r_max: ', r_max)
 print('Bo: ', bo)
 # print('eps: ', epsilon_1)

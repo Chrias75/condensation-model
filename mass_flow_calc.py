@@ -6,10 +6,10 @@ import fluid_properties_water as fpw
 # Input variables
 #####
 
-re = 2960.
+re = 22110.
 t_b = 40.
-t_w = 22.6
-rh = 0.446
+t_w = 22.4
+rh = 0.442
 p_st = 101325
 b = 0.012
 h = 0.032
