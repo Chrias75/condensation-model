@@ -1,7 +1,7 @@
 import configparser
 import numpy as np
 import fluid_properties_air as fpa
-import mass_fractions as mf
+import functions as mf
 
 
 def log_mean(x, y):

@@ -1,10 +1,6 @@
-import numpy as np
 import read_config
-import fluid_properties_air as fpa
-import fluid_properties_water as fpw
 from CoolProp.CoolProp import PropsSI
 from CoolProp.HumidAirProp import HAPropsSI
-import mass_fractions as mf
 import matplotlib.pyplot as plt
 from functions import *
 
@@ -155,9 +151,9 @@ for i, item in enumerate(re):
         # nu_corr[i] = Nu_sen(re[i], pr[i], d_h, l) * \
         #     corr_suction_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i]) * \
         #     corr_fog_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i])
-        sh_corr[i] = Sh[i] * corr_suction_mt(rH[i], T_i[i], t_mean[i])
+        sh_corr[i] = Sh[i] * corr_suction_mt(rH[i], T_i[i], t_mean[i], p_standard)
         nu_corr[i] = Nu_sen(re[i], pr[i], d_h, l) * \
-            corr_suction_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i])
+            corr_suction_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i], p_standard)
         Nu_g[i] = C[i] * (nu_corr[i] + Nu_lat(sh_corr[i], pr[i], sc[i], jakob[i], B_i[i]))
         h_g[i] = Nu_g[i] * \
             fpa.moist_air_thermal_conductivity(T_i[i], p_standard,
@@ -173,16 +169,16 @@ for i, item in enumerate(re):
         else:
             T_i[i] -= 0.01
 
-sigma_s_h = corr_suction_ht(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean)
-sigma_s_m = corr_suction_mt(rH, t_i, t_mean)
-sigma_f_h = corr_fog_ht(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean)
-sigma_f_m = corr_fog_mt(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean)
+sigma_s_h = corr_suction_ht(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean, p_standard)
+sigma_s_m = corr_suction_mt(rH, t_i, t_mean, p_standard)
+sigma_f_h = corr_fog_ht(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean, p_standard)
+sigma_f_m = corr_fog_mt(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean, p_standard)
 p_v_in = rH * fpa.temperature2saturation_vapour_pressure(t_in)
 p_v_mean = rH * fpa.temperature2saturation_vapour_pressure(t_mean)
 x_bs, x_b = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_mean)
 x_is, x_i = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_i)
 # print('test: ', c_p_mixture(0.804, 94.))
-print('dp/dt: ', saturation_line_slope(t_i))
+print('dp/dt: ', saturation_line_slope(t_i, p_standard))
 # print('dp/dt(Brouwers): ', saturation_line_bruowers(t_i))
 print('tangency: ', sigma_f_m / sigma_f_h * Sh / np.vectorize(Nu_sen)(re, pr, d_h, l) * (x_b - x_i) / (t_mean - t_i))
 print('suction_ht:', sigma_s_h)
