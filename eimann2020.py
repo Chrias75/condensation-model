@@ -4,9 +4,9 @@ import fluid_properties_air as fpa
 import fluid_properties_water as fpw
 from CoolProp.CoolProp import PropsSI
 from CoolProp.HumidAirProp import HAPropsSI
-from scipy.integrate import quad
 import mass_fractions as mf
 import matplotlib.pyplot as plt
+from functions import *
 
 # re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, m_air, m_water, m_cond = [], [], [], [], [], [], [], [], [], [], [], [], []
 # b, h, l, p_standard, theta_a = 0., 0., 0., 0., 0.
@@ -20,170 +20,6 @@ data = '/home/brue_ch/Auswertungen/rH_variable/Profil/data_rH_variable_all.dat'
 result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_modell.dat'
 re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, mf_int, \
  mf_bulk, b, h, l, p_standard, theta_a, theta_r = read_config.read(config_file, data_file=None, switch='config')
-####################################################################################
-# Functions
-####################################################################################
-
-
-def Nu_lam(reynolds, prandtl, dia_hydr, length):
-    """mean laminar Nusselt number for constant temperature difference taken from Heat Transfer in Pipe Flow Chapter
-       of the VDI Heat Atlas by Gnielinski, V. (2010) p. 693 ff doi: 10.1007/978-3-540-77877-6 """
-    Nu_mt1 = 3.66
-    Nu_mt2 = 1.615 * (reynolds * prandtl * dia_hydr / length) ** (1/3)
-    Nu_mt3 = (2 / (1 + 22 * prandtl)) ** (1/6) * (reynolds * prandtl * dia_hydr / length) ** (1/2)
-    return (Nu_mt1 ** 3 + 0.7 ** 3 + (Nu_mt2 - 0.7) ** 3 + Nu_mt3 ** 3) ** (1/3)
-
-
-def Nu_turb(reynolds, prandtl, dia_hydr, length):
-    """mean turbulent Nusselt number taken from Heat Transfer in Pipe Flow Chapter of the VDI Heat Atlas by
-       Gnielinski, V. (2010) p. 693 ff doi: 10.1007/978-3-540-77877-6 """
-    xi = (1.8 * np.log10(reynolds) - 1.5) ** (-2)
-    return (xi / 8 * reynolds * prandtl) / (1 + 12.7 * np.sqrt(xi / 8) * (prandtl ** (2/3) - 1)) * \
-           (1 + (dia_hydr / length) ** (2/3))
-
-
-def Nu_sen(reynolds, prandtl, dia_hydr, length):
-    """sensible Nusselt number for entire range of Reynolds numbers taken from Heat Transfer in Pipe Flow Chapter
-       of the VDI Heat Atlas by Gnielinski, V. (2010) p. 693 ff doi: 10.1007/978-3-540-77877-6 """
-    if reynolds < 2300:
-        return Nu_lam(reynolds, prandtl, dia_hydr, length)
-    elif reynolds > 10000:
-        return Nu_turb(reynolds, prandtl, dia_hydr, length)
-    else:
-        gamma = (reynolds - 2300) / (10000 - 2300)
-        return (1 - gamma) * Nu_lam(2300, prandtl, dia_hydr, length) + gamma * Nu_turb(10000, prandtl, dia_hydr, length)
-
-
-def Nu_lat(sherwood, prandtl, schmidt, jakob, B_i):
-    return sherwood * prandtl * B_i * (schmidt * jakob) ** (-1)
-
-
-def corr_suction_ht(sher, nuss, pran, schm, rh, t_int, t):
-    p_v = rh * fpa.temperature2saturation_vapour_pressure(t)
-    c_p = fpa.moist_air_heat_capacity(t, p_standard, p_v)
-    c_pv = fpw.heat_capacity(t)
-    x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
-    x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
-    r_t = c_pv / c_p * (sher * pran) / (schm * nuss) * np.log((1 - x_vb) / (1 - x_vi))
-    return -1 * r_t / (np.exp(-r_t) - 1)
-
-
-def corr_fog_ht(sher, nuss, pran, schm, rh, t_int, t):
-    p_v = rh * fpa.temperature2saturation_vapour_pressure(t)
-    c_p = fpa.moist_air_heat_capacity(t, p_standard, p_v)
-    x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
-    x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
-    lmbda = fpw.enthalpy_evaporation(t)
-    # c_p_alt = c_p_mixture(x_vb, t)
-    # lmbda_mol = lmbda * fpa.MOLES_MASS_VAPOUR
-    # print('1_mol: ', lmbda_mol / c_p_alt)
-    # print('1: ', lmbda / c_p)
-    # print('2: ', pran / schm)
-    # print('3: ', (x_vb - x_vi) / (t - t_int))
-    # print('4: ', sher / nuss)
-    # print('5: ', saturation_line_slope(t_int))
-    # print('6: ', (lmbda / c_p * pran / schm * 2 * (x_vb - x_vi) / (t - t_int) * sher / nuss))
-    # print('7: ', (lmbda / c_p * pran / schm * saturation_line_slope(t_int)))
-    # print('8: ', ((lmbda / c_p * pran / schm * 2 * (x_vb - x_vi) / (t - t_int) * sher / nuss) ** -1))
-    # print('9: ', ((lmbda / c_p * pran / schm * saturation_line_slope(t_int)) ** -1))
-    return (1 + lmbda / c_p * pran / schm * (x_vb - x_vi) / (t - t_int) * sher / nuss) / \
-           (1 + lmbda / c_p * pran / schm * saturation_line_slope(t_int))
-
-
-def corr_suction_mt(rh, t_int, t):
-    p_v = rh * fpa.temperature2saturation_vapour_pressure(t)
-    x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
-    x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
-    r_w = (x_vb - x_vi) / (1 - x_vi)
-    return np.log(1 - r_w) / (-r_w)
-
-
-def corr_fog_mt(sher, nuss, pran, schm, rh, t_int, t):
-    p_v = rh * fpa.temperature2saturation_vapour_pressure(t)
-    c_p = fpa.moist_air_heat_capacity(t, p_standard, p_v)
-    x_vbs, x_vb = fpa.__moles_fraction_mixture__(p_v, p_standard, t)
-    x_vis, x_vi = fpa.__moles_fraction_mixture__(p_v, p_standard, t_int)
-    lmbda = fpw.enthalpy_evaporation(t)
-    # c_p_alt = c_p_mixture(x_vb, t)
-    # lmbda_mol = lmbda * fpa.MOLES_MASS_VAPOUR
-    return (1 + (lmbda / c_p * pran / schm * (x_vb - x_vi) / (t - t_int) * sher / nuss) ** -1) / \
-           (1 + (lmbda / c_p * pran / schm * saturation_line_slope(t_int)) ** -1)
-
-
-def cos_theta(phi, theta_max, theta_min):
-    return ((2 * (np.cos(theta_max) - np.cos(theta_min)) * phi ** 3 / np.pi ** 3) -
-            (3 * (np.cos(theta_max) - np.cos(theta_min)) * phi ** 2 / np.pi ** 2) + np.cos(theta_max)) * np.cos(phi)
-
-
-def zeta(phi, d, aspect_ratio):
-    return ((abs(np.cos(phi)) / d) ** 3 + (abs(aspect_ratio * np.sin(phi)) / d) ** 3) ** (-1 / 3)
-
-
-def f_grav(r_d, density_cond):
-    return density_cond * 9.81 * 2 / 3 * np.pi * r_d ** 3
-
-
-def f_surf_tens(r_d, gamma, theta_max, theta_min):
-    return r_d * gamma * quad(cos_theta, 0., 2. * np.pi, args=(theta_max, theta_min,))[0]
-
-
-def f_drag(r_d, density_air, v, coef_drag, theta_max, theta_min, aspect_ratio):
-    l_f = np.sin(theta_max) * (1 - np.cos(theta_min)) / (np.sin(theta_min) * (1 - np.cos(theta_max)))
-    return r_d ** 2 * 0.5 * density_air * v ** 2 * coef_drag / ((1 + l_f) ** 2) * \
-        (l_f ** 2 * theta_min / (np.sin(aspect_ratio) ** 2) + l_f ** 2 / np.tan(aspect_ratio) +
-         theta_min / (np.sin(theta_min) ** 2) - 1 / np.tan(theta_min))
-
-
-def correction_factor(r_m):
-    """correlations of parameters are added from Eimann, F., Zheng, S., Philipp, C., Omranpoor, A. H., & Gross, U.
-       (2020). Dropwise condensation of humid air - Experimental investigation and modelling of the convective heat
-       transfer. Int. Journal of Heat and Mass Transfer, 154
-       https://doi.org/10.1016/j.ijheatmasstransfer.2020.119734
-       C   :    correction factor for droplet/film. correlation of predicted and measured droplet maximum radius for
-                hemispherical droplets (0.2 mm < r_max < 1.61 mm)
-       h_d :    drop heat coefficient correlation (for 2000 < Re < 21400) based on thermographic measurements
-
-    """
-    r_d = r_m * 1000
-    if r_d <= 1.3:
-        __c = 0.28 * r_d + 1.155
-    else:
-        __c = 1.451 * r_d - 0.274
-    return __c
-
-
-def saturation_line_slope(t):
-    return (fpa.temperature2saturation_vapour_pressure(t + 1e-4) -
-            fpa.temperature2saturation_vapour_pressure(t - 1e-4)) / (p_standard * 2e-4)
-
-
-def saturation_line_bruowers(t):
-    """slope of the saturation line as given in Brouwers, H.J.H., Effect of Fog Formation on Turbulent Vapor
-       Condensation with Noncondensable Gases, 1996
-       P_v(T) given by Reid et al, The Properties of Gases and Liquids, pp 629, 632,  1977"""
-    return (np.exp(11.6834 - 3816.44 / (227.02 + (t + 1e-4))) - np.exp(11.6834 - 3816.44 / (227.02 + (t - 1e-4)))) / \
-           ((p_standard * 1e-5) * 2e-4)
-
-
-def c_p_mixture(x, t):
-    """gives the molar specific heat capacity of humid air with a water mass fraction x"""
-    c_pg = fpa.dry_air_heat_capacity(t) * fpa.MOLES_MASS_AIR
-    print(c_pg)
-    c_pv = fpw.heat_capacity(t) * fpa.MOLES_MASS_VAPOUR
-    print(c_pv)
-    return (1 - x) * c_pg + x * c_pv
-
-
-def c_drag(r_d, rey, d_hyd):
-    re_drop = rey * r_d / d_hyd
-    return 0.28 + (6 / np.sqrt(re_drop)) + (21 / re_drop)
-
-
-def log_mean(x, y):
-    x = np.array(x)
-    y = np.array(y)
-    __logmean = (np.maximum(x, y) - np.minimum(x, y)) / (np.log((np.maximum(x, y)) / (np.minimum(x, y))))
-    return __logmean
 
 ####################################################################################
 # Droplet Force Balance
@@ -206,8 +42,10 @@ print('Bo_0: ', bo)
 
 beta = 1 + 0.096 * bo
 half_d = beta * r_max
+print('d: ', half_d)
 print('beta: ', beta)
 theta_m = theta_a * (0.01 * bo ** 2 - 0.155 * bo + 0.97)
+print('Re_d: ', re * r_max / d_h)
 c_d = c_drag(r_max, re, d_h)
 print('C_d: ', c_d)
 
@@ -222,15 +60,15 @@ ar_test = np.linspace(0.00000001, 2.0e-3, 2000)
 plt.figure(1)
 plt.plot(ar_test, f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m, beta), label='F_d')
 plt.plot(ar_test, f_grav(ar_test, rho_c), label='F_g')
-plt.plot(ar_test, f_surf_tens(ar_test, surf_tens, theta_a, theta_m), label='F_s')
+plt.plot(ar_test, np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, half_d, beta), label='F_s')
 plt.legend(loc=2)
 plt.figure(2)
-plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m, beta) ** 2
-                   + f_grav(ar_test, rho_c) ** 2
-                   - f_surf_tens(ar_test, surf_tens, theta_a, theta_m)) ** 2, label='sum F')
-# plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m, beta)
-#                    + f_grav(ar_test, rho_c)
-#                    - abs(f_surf_tens(ar_test, surf_tens, theta_a, theta_m, half_d, beta))), label='sum F')
+# plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m, beta) ** 2
+#                    + f_grav(ar_test, rho_c) ** 2
+#                    - np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, half_d, beta)) ** 2, label='sum F')
+plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m, beta)
+                   + f_grav(ar_test, rho_c)
+                   - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, half_d, beta))), label='sum F')
 plt.legend(loc=2)
 plt.show()
 
@@ -249,11 +87,11 @@ for i, item in enumerate(re):
         c_d[i] = c_drag(r_max[i], re[i], d_h)
         f_g[i] = f_grav(r_max[i], rho_c[i])
         try:
-            f_s[i] = f_surf_tens(r_max[i], surf_tens[i], theta_a, theta_m)
+            f_s[i] = f_surf_tens(r_max[i], surf_tens[i], theta_a, theta_m, half_d[i], beta[i])
         except TypeError:
-            f_s[i] = f_surf_tens(r_max[i], np.array([surf_tens])[i], theta_a, theta_m)
+            f_s[i] = f_surf_tens(r_max[i], np.array([surf_tens])[i], theta_a, theta_m, half_d[i], beta[i])
         except IndexError:
-            f_s[i] = f_surf_tens(r_max[i], np.array([surf_tens])[i], theta_a, theta_m)
+            f_s[i] = f_surf_tens(r_max[i], np.array([surf_tens])[i], theta_a, theta_m, half_d[i], beta[i])
         # print(f_s[i])
         f_d[i] = f_drag(r_max[i], rho_b[i], u[i], c_d[i], theta_a, theta_m, beta[i])
         epsilon_1[i] = f_g[i] ** 2 + f_d[i] ** 2 - f_s[i] ** 2
