@@ -8,17 +8,17 @@ def Nu_lam(reynolds, prandtl, dia_hydr, length):
     """mean laminar Nusselt number for constant temperature difference taken from Heat Transfer in Pipe Flow Chapter
        of the VDI Heat Atlas by Gnielinski, V. (2010) p. 693 ff doi: 10.1007/978-3-540-77877-6 """
     Nu_mt1 = 3.66
-    Nu_mt2 = 1.615 * (reynolds * prandtl * dia_hydr / length) ** (1/3)
-    Nu_mt3 = (2 / (1 + 22 * prandtl)) ** (1/6) * (reynolds * prandtl * dia_hydr / length) ** (1/2)
-    return (Nu_mt1 ** 3 + 0.7 ** 3 + (Nu_mt2 - 0.7) ** 3 + Nu_mt3 ** 3) ** (1/3)
+    Nu_mt2 = 1.615 * (reynolds * prandtl * dia_hydr / length) ** (1 / 3)
+    Nu_mt3 = (2 / (1 + 22 * prandtl)) ** (1 / 6) * (reynolds * prandtl * dia_hydr / length) ** (1 / 2)
+    return (Nu_mt1 ** 3 + 0.7 ** 3 + (Nu_mt2 - 0.7) ** 3 + Nu_mt3 ** 3) ** (1 / 3)
 
 
 def Nu_turb(reynolds, prandtl, dia_hydr, length):
     """mean turbulent Nusselt number taken from Heat Transfer in Pipe Flow Chapter of the VDI Heat Atlas by
        Gnielinski, V. (2010) p. 693 ff doi: 10.1007/978-3-540-77877-6 """
     xi = (1.8 * np.log10(reynolds) - 1.5) ** (-2)
-    return (xi / 8 * reynolds * prandtl) / (1 + 12.7 * np.sqrt(xi / 8) * (prandtl ** (2/3) - 1)) * \
-           (1 + (dia_hydr / length) ** (2/3))
+    return (xi / 8 * reynolds * prandtl) / (1 + 12.7 * np.sqrt(xi / 8) * (prandtl ** (2 / 3) - 1)) * \
+           (1 + (dia_hydr / length) ** (2 / 3))
 
 
 def Nu_sen(reynolds, prandtl, dia_hydr, length):
@@ -107,8 +107,10 @@ def corr_fog_mt(sher, nuss, pran, schm, rh, t_int, t, p):
 
 
 def cos_theta(phi, theta_max, theta_min, d, aspect_ratio):
-    return zeta(phi, d, aspect_ratio) * ((2 * (np.cos(theta_max) - np.cos(theta_min)) * phi ** 3 / np.pi ** 3) -
-            (3 * (np.cos(theta_max) - np.cos(theta_min)) * phi ** 2 / np.pi ** 2) + np.cos(theta_max)) * np.cos(phi)
+    return zeta(phi, d, aspect_ratio) * \
+           ((2 * (np.cos(np.deg2rad(theta_max)) - np.cos(np.deg2rad(theta_min))) * phi ** 3 / np.pi ** 3) -
+            (3 * (np.cos(np.deg2rad(theta_max)) - np.cos(np.deg2rad(theta_min))) * phi ** 2 / np.pi ** 2) +
+            np.cos(np.deg2rad(theta_max))) * np.cos(phi)
 
 
 def zeta(phi, r_cl, aspect_ratio):
@@ -119,25 +121,33 @@ def f_grav(r_d, density_cond):
     return density_cond * 9.81 * 2 / 3 * np.pi * r_d ** 3
 
 
-def f_grav_vert(r_d, density_cond, theta_max, theta_min, aspect_ratio):
-    h_drop = r_d * (1 - np.cos(np.mean(theta_max, theta_min)))
-    return density_cond * 9.81 * np.pi / 6 * h_drop * \
-        (3 * (quad(zeta, 0., 2. * np.pi, args=(h_drop, aspect_ratio))[0]) ** 2 - h_drop ** 2)
+def f_grav_vert(r_d, density_cond, theta_max, theta_min):
+    return density_cond * 9.81 * np.pi / 3 * r_d ** 3 * (2 + np.cos(np.deg2rad((theta_max + theta_min) / 2))) * \
+        (1 - np.cos(np.deg2rad((theta_max + theta_min) / 2))) ** 2
 
 
-def f_surf_tens(r_d, gamma, theta_max, theta_min, d, aspect_ratio):
-    return gamma * quad(cos_theta, 0., 2. * np.pi, args=(theta_max, theta_min, r_d, aspect_ratio,))[0]
+def f_surf_tens(r_d, gamma, theta_max, theta_min, aspect_ratio):
+    r_cl = r_d * np.sin(np.deg2rad((theta_max + theta_min) / 2))
+    return gamma * quad(cos_theta, 0., 2. * np.pi, args=(theta_max, theta_min, r_cl, aspect_ratio,))[0]
 
 
-def f_drag(r_d, density_air, v, coef_drag, theta_max, theta_min, aspect_ratio):
-    l_f = np.sin(theta_max) * (1 - np.cos(theta_min)) / (np.sin(theta_min) * (1 - np.cos(theta_max)))
-    return r_d ** 2 * 0.5 * density_air * v ** 2 * coef_drag / ((1 + l_f) ** 2) * \
-        (l_f ** 2 * theta_min / (np.sin(aspect_ratio) ** 2) + l_f ** 2 / np.tan(aspect_ratio) +
-         theta_min / (np.sin(theta_min) ** 2) - 1 / np.tan(theta_min))
+def f_drag(r_d, density_air, v, coef_drag, theta_max, theta_min):
+    theta_max_pi = np.deg2rad(theta_max)
+    theta_min_pi = np.deg2rad(theta_min)
+    beta = np.pi - theta_max_pi
+    l_f = np.sin(theta_max_pi) * (1 - np.cos(theta_min_pi)) / (np.sin(theta_min_pi) * (1 - np.cos(theta_max_pi)))
+    if theta_max > 90. > theta_min:
+        return r_d ** 2 * 0.5 * density_air * v ** 2 * coef_drag / ((1 + l_f) ** 2) * \
+            (l_f ** 2 * theta_min / (np.sin(beta) ** 2) + l_f ** 2 / np.tan(beta) +
+             theta_min / (np.sin(theta_min_pi) ** 2) - 1 / np.tan(theta_min_pi))
+    else:
+        return r_d ** 2 * 0.5 * density_air * v ** 2 * coef_drag/ ((1 + l_f) ** 2) * \
+            (l_f ** 2 * theta_min / (np.sin(theta_max_pi) ** 2) + l_f ** 2 / np.tan(theta_max_pi) +
+             theta_min / (np.sin(theta_min_pi) ** 2) - 1 / np.tan(theta_min_pi))
 
 
-def f_drag_vert(r_d, density_air, v, coef_drag, theta_max, theta_min, aspect_ratio):
-    a_proj = r_d ** 2 / 2 * (np.pi / 180 * np.mean(theta_max, theta_min) / 2 - np.sin(np.mean(theta_max, theta_min) / 2))
+def f_drag_vert(r_d, density_air, v, coef_drag, theta_max, theta_min):
+    a_proj = r_d ** 2 / 2 * (np.pi / 180 * (theta_max + theta_min) - np.sin(np.deg2rad((theta_max + theta_min))))
     return 0.5 * density_air * v ** 2 * coef_drag * a_proj
 
 

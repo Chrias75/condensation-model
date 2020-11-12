@@ -36,8 +36,9 @@ def read(config_file, data_file=None, switch='config'):
 
         cfg_oth = config['other']
         p_standard = cfg_oth.getfloat('pressure')
-        theta_a = cfg_oth.getfloat('ascending_contact_angle') / (180 * np.pi)
-        theta_r = cfg_oth.getfloat('receding_contact_angle') / (180 * np.pi)
+        theta_a = cfg_oth.getfloat('ascending_contact_angle')
+        theta_r = cfg_oth.getfloat('receding_contact_angle')
+        flow_direction = str(cfg_oth.get('flow_direction'))
 
         try:
             cfg_mf = config['mass_flow']
@@ -59,7 +60,7 @@ def read(config_file, data_file=None, switch='config'):
                 mf_int, mf_bulk = [], []
 
         return re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, \
-            rh, mf_int, mf_bulk, b, h, l, p_standard, theta_a, theta_r
+            rh, mf_int, mf_bulk, b, h, l, p_standard, theta_a, theta_r, flow_direction
     elif switch == 'dat' and data_file is not None:
         config = configparser.ConfigParser()
         config.read(config_file)
@@ -68,8 +69,9 @@ def read(config_file, data_file=None, switch='config'):
         h = cfg_dim.getfloat('height')
         l = cfg_dim.getfloat('length')
         p_standard = config['other'].getfloat('pressure')
-        theta_a = config['other'].getfloat('ascending_contact_angle') / (180 * np.pi)
-        theta_r = config['other'].getfloat('receding_contact_angle') / (180 * np.pi)
+        theta_a = config['other'].getfloat('ascending_contact_angle')
+        theta_r = config['other'].getfloat('receding_contact_angle')
+        flow_direction = str(config['other'].get('flow_direction'))
         re = np.loadtxt(data_file, skiprows=1, usecols=2)
         pr = np.loadtxt(data_file, skiprows=1, usecols=4)
     
@@ -93,7 +95,7 @@ def read(config_file, data_file=None, switch='config'):
              (fpa.diffusion_coefficient(t_mean) *
               fpa.moist_air_density(p_standard, rh * fpa.temperature2saturation_vapour_pressure(t_in), t_mean))
         return re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, \
-            rh, mf_int, mf_bulk, b, h, l, p_standard, theta_a, theta_r
+            rh, mf_int, mf_bulk, b, h, l, p_standard, theta_a, theta_r, flow_direction
     else:
         print('switch not set or data file missing')
         exit(0)
