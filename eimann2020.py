@@ -43,7 +43,7 @@ print('theta_max: ', theta_a)
 theta_m = theta_a * (0.01 * bo ** 2 - 0.155 * bo + 0.97)
 print('theta_min: ', theta_m)
 print('Re_d: ', re * r_max / d_h)
-c_d = c_drag(r_max, re, d_h)
+c_d = c_drag(r_max, theta_a, theta_m, re, d_h)
 print('C_d: ', c_d)
 
 u = re * HAPropsSI('mu', 'T', t_mean + 273.15, 'P', p_standard, 'R', rH) / \
@@ -55,30 +55,30 @@ f_d = np.zeros(re.shape)
 
 ar_test = np.linspace(0.00000001, 3.0e-3, 100)
 plt.figure(1)
-plt.plot(ar_test, f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m), label='F_d')
+plt.plot(ar_test, f_drag(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m), label='F_d')
 plt.plot(ar_test, f_grav(ar_test, rho_c), label='F_g')
 plt.plot(ar_test, np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta), label='F_s')
 plt.legend(loc=2)
 plt.figure(2)
-plt.plot(ar_test, f_drag_vert(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m), label='F_d')
-plt.plot(ar_test, np.vectorize(f_grav_vert)(ar_test, rho_c, theta_a, theta_m, beta), label='F_g')
+plt.plot(ar_test, f_drag_vert(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m), label='F_d')
+plt.plot(ar_test, np.vectorize(f_grav_vert)(ar_test, rho_c, theta_a, theta_m), label='F_g')
 plt.plot(ar_test, np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta), label='F_s')
 plt.legend(loc=2)
 plt.figure(3)
-plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m) ** 2
+plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m) ** 2
                    + f_grav(ar_test, rho_c) ** 2
-                   - np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta)) ** 2, label='sum F')
+                   - np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta) ** 2), label='sum F')
 # plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m)
 #                    + f_grav(ar_test, rho_c)
 #                    - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta))), label='sum F')
 plt.legend(loc=2)
 plt.figure(4)
-# plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m, beta) ** 2
-#                    + f_grav(ar_test, rho_c) ** 2
-#                    - np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, half_d, beta)) ** 2, label='sum F')
-plt.plot(ar_test, (f_drag_vert(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m)
+plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m)
+                   + f_grav(ar_test, rho_c)
+                   - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta))), label='sum F hori')
+plt.plot(ar_test, (f_drag_vert(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m)
                    + np.vectorize(f_grav_vert)(ar_test, rho_c, theta_a, theta_m)
-                   - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta))), label='sum F')
+                   - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta))), label='sum F vert')
 plt.legend(loc=2)
 plt.show()
 
@@ -95,7 +95,7 @@ for i, item in enumerate(re):
         # print(bo)
         beta[i] = 1 + 0.096 * bo[i]
         theta_m = theta_a * (0.01 * bo[i] ** 2 - 0.155 * bo[i] + 0.97)
-        c_d[i] = c_drag(r_max[i], re[i], d_h)
+        c_d[i] = c_drag(r_max[i], theta_a, theta_m, re[i], d_h)
         if flow_direction.strip() == 'horizontal':
             f_g[i] = f_grav(r_max[i], rho_c[i])
             try:

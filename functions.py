@@ -107,10 +107,12 @@ def corr_fog_mt(sher, nuss, pran, schm, rh, t_int, t, p):
 
 
 def cos_theta(phi, theta_max, theta_min, d, aspect_ratio):
+    theta_max_pi = np.deg2rad(theta_max)
+    theta_min_pi = np.deg2rad(theta_min)
     return zeta(phi, d, aspect_ratio) * \
-           ((2 * (np.cos(np.deg2rad(theta_max)) - np.cos(np.deg2rad(theta_min))) * phi ** 3 / np.pi ** 3) -
-            (3 * (np.cos(np.deg2rad(theta_max)) - np.cos(np.deg2rad(theta_min))) * phi ** 2 / np.pi ** 2) +
-            np.cos(np.deg2rad(theta_max))) * np.cos(phi)
+           ((2 * (np.cos(theta_max_pi) - np.cos(theta_min_pi)) * phi ** 3 / np.pi ** 3) -
+            (3 * (np.cos(theta_max_pi) - np.cos(theta_min_pi)) * phi ** 2 / np.pi ** 2) +
+            np.cos(theta_max_pi)) * np.cos(phi)
 
 
 def zeta(phi, r_cl, aspect_ratio):
@@ -136,14 +138,20 @@ def f_drag(r_d, density_air, v, coef_drag, theta_max, theta_min):
     theta_min_pi = np.deg2rad(theta_min)
     beta = np.pi - theta_max_pi
     l_f = np.sin(theta_max_pi) * (1 - np.cos(theta_min_pi)) / (np.sin(theta_min_pi) * (1 - np.cos(theta_max_pi)))
+    l_1 = 2 * r_d * np.sin((theta_max_pi + theta_min_pi) / 2) * l_f / (1 + l_f)
+    l_2 = 2 * r_d * np.sin((theta_max_pi + theta_min_pi) / 2) / (1 + l_f)
     if theta_max > 90. > theta_min:
-        return r_d ** 2 * 0.5 * density_air * v ** 2 * coef_drag / ((1 + l_f) ** 2) * \
-            (l_f ** 2 * theta_min / (np.sin(beta) ** 2) + l_f ** 2 / np.tan(beta) +
-             theta_min / (np.sin(theta_min_pi) ** 2) - 1 / np.tan(theta_min_pi))
+        return 0.5 * density_air * v ** 2 * coef_drag * \
+               (np.pi * l_1 ** 2 / np.sin(beta) ** 2 * theta_min_pi / (2 * np.pi) +
+                1 / 2 * l_1 ** 2 / np.tan(beta) +
+                np.pi * l_2 ** 2 / np.sin(theta_min_pi) ** 2 * theta_min_pi / (2 * np.pi) -
+                1 / 2 * l_2 ** 2 / np.tan(theta_min_pi))
     else:
-        return r_d ** 2 * 0.5 * density_air * v ** 2 * coef_drag/ ((1 + l_f) ** 2) * \
-            (l_f ** 2 * theta_min / (np.sin(theta_max_pi) ** 2) + l_f ** 2 / np.tan(theta_max_pi) +
-             theta_min / (np.sin(theta_min_pi) ** 2) - 1 / np.tan(theta_min_pi))
+        return 0.5 * density_air * v ** 2 * coef_drag * \
+               (np.pi * l_1 ** 2 / np.sin(theta_max_pi) ** 2 * theta_min_pi / (2 * np.pi) +
+                1 / 2 * l_1 ** 2 / np.tan(theta_max_pi) +
+                np.pi * l_2 ** 2 / np.sin(theta_min_pi) ** 2 * theta_min_pi / (2 * np.pi) -
+                1 / 2 * l_2 ** 2 / np.tan(theta_min_pi))
 
 
 def f_drag_vert(r_d, density_air, v, coef_drag, theta_max, theta_min):
@@ -191,8 +199,9 @@ def c_p_mixture(x, t):
     return (1 - x) * c_pg + x * c_pv
 
 
-def c_drag(r_d, rey, d_hyd):
-    re_drop = rey * r_d / d_hyd
+def c_drag(r_d, theta_max, theta_min, rey, d_hyd):
+    h_d = r_d * (1 - np.cos(np.deg2rad((theta_max + theta_min) / 2)))
+    re_drop = rey * h_d / d_hyd
     return 0.28 + (6 / np.sqrt(re_drop)) + (21 / re_drop)
 
 
