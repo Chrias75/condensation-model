@@ -106,13 +106,16 @@ def corr_fog_mt(sher, nuss, pran, schm, rh, t_int, t, p):
            (1 + (lmbda / c_p * pran / schm * saturation_line_slope(t_int, p)) ** -1)
 
 
-def cos_theta(phi, theta_max, theta_min, d, aspect_ratio):
+def cos_theta(phi, theta_max, theta_min):
     theta_max_pi = np.deg2rad(theta_max)
     theta_min_pi = np.deg2rad(theta_min)
-    return zeta(phi, d, aspect_ratio) * \
-           ((2 * (np.cos(theta_max_pi) - np.cos(theta_min_pi)) * phi ** 3 / np.pi ** 3) -
+    return ((2 * (np.cos(theta_max_pi) - np.cos(theta_min_pi)) * phi ** 3 / np.pi ** 3) -
             (3 * (np.cos(theta_max_pi) - np.cos(theta_min_pi)) * phi ** 2 / np.pi ** 2) +
-            np.cos(theta_max_pi)) * np.cos(phi)
+            np.cos(theta_max_pi))
+
+
+def cos_theta_integrate(phi, theta_max, theta_min, d, aspect_ratio):
+    return zeta(phi, d, aspect_ratio) * cos_theta(phi, theta_max, theta_min) * np.cos(phi)
 
 
 def zeta(phi, r_cl, aspect_ratio):
@@ -130,7 +133,7 @@ def f_grav_vert(r_d, density_cond, theta_max, theta_min):
 
 def f_surf_tens(r_d, gamma, theta_max, theta_min, aspect_ratio):
     r_cl = r_d * np.sin(np.deg2rad((theta_max + theta_min) / 2))
-    return gamma * quad(cos_theta, 0., 2. * np.pi, args=(theta_max, theta_min, r_cl, aspect_ratio,))[0]
+    return gamma * quad(cos_theta_integrate, 0., 2. * np.pi, args=(theta_max, theta_min, r_cl, aspect_ratio,))[0]
 
 
 def f_drag(r_d, density_air, v, coef_drag, theta_max, theta_min):
