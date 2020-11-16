@@ -38,7 +38,7 @@ def read(config_file, data_file=None, switch='config'):
         p_standard = cfg_oth.getfloat('pressure')
         theta_a = cfg_oth.getfloat('ascending_contact_angle')
         theta_r = cfg_oth.getfloat('receding_contact_angle')
-        flow_direction = str(cfg_oth.get('flow_direction'))
+        flow_direction = str(cfg_oth.get('flow_direction')).strip()
 
         try:
             cfg_mf = config['mass_flow']
@@ -71,7 +71,7 @@ def read(config_file, data_file=None, switch='config'):
         p_standard = config['other'].getfloat('pressure')
         theta_a = config['other'].getfloat('ascending_contact_angle')
         theta_r = config['other'].getfloat('receding_contact_angle')
-        flow_direction = str(config['other'].get('flow_direction'))
+        flow_direction = str(config['other'].get('flow_direction')).strip()
         re = np.loadtxt(data_file, skiprows=1, usecols=2)
         pr = np.loadtxt(data_file, skiprows=1, usecols=4)
     

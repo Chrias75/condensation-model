@@ -25,13 +25,14 @@ print(d_h / h)
 print(flow_direction)
 # gravitational force
 g = 9.81
-rho_c = fpw.density(t_w)
+rho_c = fpw.density(t_w) * 1000
+print('rho_w: ', rho_c)
 rho_b = fpa.moist_air_density(p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in), t_mean)
-
+print('rho_a: ', rho_b)
 # surface tension
 surf_tens = PropsSI('SURFACE_TENSION', 'T', t_mean + 273.15, 'Q', 1, 'Water')
-print(type(surf_tens))
-r_max = np.full(re.shape, 0.012)
+print('gamma: ', surf_tens)
+r_max = np.full(re.shape, 0.001)
 bo = rho_c * g * (2 * r_max) ** 2 / surf_tens
 print('Bo_0: ', bo)
 
@@ -53,7 +54,7 @@ f_g = np.zeros(re.shape)
 f_s = np.zeros(re.shape)
 f_d = np.zeros(re.shape)
 
-ar_test = np.linspace(0.00000001, 3.0e-3, 100)
+ar_test = np.linspace(0.00000001, 5.0e-3, 100)
 plt.figure(1)
 plt.title('horizontal')
 plt.plot(ar_test, f_drag(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m), label='F_d')
@@ -82,8 +83,8 @@ plt.plot(ar_test, (f_drag_vert(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta
                    + np.vectorize(f_grav_vert)(ar_test, rho_c, theta_a, theta_m)
                    - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta))), label='sum F vert')
 plt.legend(loc=2)
-plt.show()
-exit(0)
+# plt.show()
+# exit(0)
 epsilon_1 = np.ones(re.shape)
 for i, item in enumerate(re):
     # print(i)
@@ -108,7 +109,7 @@ for i, item in enumerate(re):
                 f_s[i] = f_surf_tens(r_max[i], np.array([surf_tens])[i], theta_a, theta_m, beta[i])
             f_d[i] = f_drag(r_max[i], rho_b[i], u[i], c_d[i], theta_a, theta_m)
             epsilon_1[i] = f_g[i] ** 2 + f_d[i] ** 2 - f_s[i] ** 2
-        elif flow_direction.strip() == 'vertical':
+        elif flow_direction == 'vertical':
             f_g[i] = f_grav_vert(r_max[i], rho_c[i], theta_a, theta_m)
             try:
                 f_s[i] = f_surf_tens(r_max[i], surf_tens[i], theta_a, theta_m, beta[i])
