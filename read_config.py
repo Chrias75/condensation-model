@@ -19,7 +19,7 @@ def read(config_file, data_file=None, switch='config'):
         re = np.array([cfg_numbers.getfloat('reynolds')])
         pr = np.array([cfg_numbers.getfloat('prandtl')])
         sc = np.array([cfg_numbers.getfloat('schmidt')])
-    
+
         cfg_temp = config['temperatures']
         t_in = np.array([cfg_temp.getfloat('t_in')])
         t_out = np.array([cfg_temp.getfloat('t_out')])
@@ -28,7 +28,7 @@ def read(config_file, data_file=None, switch='config'):
         t_dp_in = np.array([cfg_temp.getfloat('t_dp_in')])
         t_dp_out = np.array([cfg_temp.getfloat('t_dp_out')])
         rh = np.array([cfg_temp.getfloat('rH')])
-    
+
         cfg_dim = config['dimensions']
         b = cfg_dim.getfloat('width')
         h = cfg_dim.getfloat('height')
@@ -38,7 +38,7 @@ def read(config_file, data_file=None, switch='config'):
         p_standard = cfg_oth.getfloat('pressure')
         theta_a = cfg_oth.getfloat('ascending_contact_angle')
         theta_r = cfg_oth.getfloat('receding_contact_angle')
-        flow_direction = str(cfg_oth.get('flow_direction')).strip()
+        flow_direction = cfg_oth.get('flow_direction')
 
         try:
             cfg_mf = config['mass_flow']
@@ -74,7 +74,7 @@ def read(config_file, data_file=None, switch='config'):
         flow_direction = str(config['other'].get('flow_direction')).strip()
         re = np.loadtxt(data_file, skiprows=1, usecols=2)
         pr = np.loadtxt(data_file, skiprows=1, usecols=4)
-    
+
         t_in = np.loadtxt(data_file, skiprows=1, usecols=28)
         t_out = np.loadtxt(data_file, skiprows=1, usecols=30)
         t_w = np.loadtxt(data_file, skiprows=1, usecols=26)
@@ -83,7 +83,7 @@ def read(config_file, data_file=None, switch='config'):
         t_dp_out = np.loadtxt(data_file, skiprows=1, usecols=36)
         # rh = np.loadtxt(data_file, skiprows=1, usecols=45)
         rh = fpa.relativehumidity(t_mean, log_mean(t_dp_in, t_dp_out))
-    
+
         m_air = np.loadtxt(data_file, skiprows=1, usecols=50)
         m_water = np.loadtxt(data_file, skiprows=1, usecols=40)
         m_cond = np.loadtxt(data_file, skiprows=1, usecols=18)

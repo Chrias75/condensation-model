@@ -3,13 +3,14 @@ from CoolProp.CoolProp import PropsSI
 from CoolProp.HumidAirProp import HAPropsSI
 import matplotlib.pyplot as plt
 from functions import *
+from scipy.optimize import minimize
 
 ####################################################################################
 # Input
 ####################################################################################
 
 config_file = 'experiment_config.cfg'
-# config_file = 'model_config.cfg'
+config_file = 'model_config.cfg'
 data = '/home/brue_ch/Auswertungen/rH_variable/Profil/data_rH_variable_all.dat'
 result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_modell.dat'
 re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, mf_int, mf_bulk, b, h, l, p_standard, \
@@ -83,51 +84,54 @@ plt.plot(ar_test, (f_drag_vert(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta
                    + np.vectorize(f_grav_vert)(ar_test, rho_c, theta_a, theta_m)
                    - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta))), label='sum F vert')
 plt.legend(loc=2)
-# plt.show()
+#plt.show()
 # exit(0)
 epsilon_1 = np.ones(re.shape)
+
 for i, item in enumerate(re):
-    # print(i)
-    # print('Re: ', item)
-    while abs(epsilon_1[i]) > 1e-18:
-        # if type(surf_tens) == numpy.ndarray:
+
+    def func(r):
         try:
-            bo[i] = rho_c[i] * g * (2 * r_max[i]) ** 2 / surf_tens[i]
+            bo[i] = rho_c[i] * g * (2 * r) ** 2 / surf_tens[i]
         except IndexError:
-            bo[i] = rho_c[i] * g * (2 * r_max[i]) ** 2 / np.array([surf_tens])[i]
+            bo[i] = rho_c[i] * g * (2 * r) ** 2 / np.array([surf_tens])[i]
         # print(bo)
         beta[i] = 1 + 0.096 * bo[i]
         theta_m = theta_a * (0.01 * bo[i] ** 2 - 0.155 * bo[i] + 0.97)
-        c_d[i] = c_drag(r_max[i], theta_a, theta_m, re[i], d_h)
+        c_d[i] = c_drag(r, theta_a, theta_m, re[i], d_h)
+
         if flow_direction.strip() == 'horizontal':
-            f_g[i] = f_grav(r_max[i], rho_c[i])
+            f_g[i] = f_grav(r, rho_c[i])
             try:
-                f_s[i] = f_surf_tens(r_max[i], surf_tens[i], theta_a, theta_m, beta[i])
+                f_s[i] = f_surf_tens(r, surf_tens[i], theta_a, theta_m, beta[i])
             except TypeError:
-                f_s[i] = f_surf_tens(r_max[i], np.array([surf_tens])[i], theta_a, theta_m, beta[i])
+                f_s[i] = f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
             except IndexError:
-                f_s[i] = f_surf_tens(r_max[i], np.array([surf_tens])[i], theta_a, theta_m, beta[i])
-            f_d[i] = f_drag(r_max[i], rho_b[i], u[i], c_d[i], theta_a, theta_m)
+                f_s[i] = f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
+            f_d[i] = f_drag(r, rho_b[i], u[i], c_d[i], theta_a, theta_m)
             epsilon_1[i] = f_g[i] ** 2 + f_d[i] ** 2 - f_s[i] ** 2
+
         elif flow_direction == 'vertical':
-            f_g[i] = f_grav_vert(r_max[i], rho_c[i], theta_a, theta_m)
+            f_g[i] = f_grav_vert(r, rho_c[i], theta_a, theta_m)
             try:
-                f_s[i] = f_surf_tens(r_max[i], surf_tens[i], theta_a, theta_m, beta[i])
+                f_s[i] = f_surf_tens(r, surf_tens[i], theta_a, theta_m, beta[i])
             except TypeError:
-                f_s[i] = f_surf_tens(r_max[i], np.array([surf_tens])[i], theta_a, theta_m, beta[i])
+                f_s[i] = f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
             except IndexError:
-                f_s[i] = f_surf_tens(r_max[i], np.array([surf_tens])[i], theta_a, theta_m, beta[i])
-            f_d[i] = f_drag_vert(r_max[i], rho_b[i], u[i], c_d[i], theta_a, theta_m)
+                f_s[i] = f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
+
+            f_d[i] = f_drag_vert(r, rho_b[i], u[i], c_d[i], theta_a, theta_m)
             epsilon_1[i] = f_g[i] + f_d[i] + f_s[i]
+
         else:
             print('no flow direction given')
             exit(0)
-        # print('eps: ', epsilon_1)
-        if epsilon_1[i] < 0.:
-            r_max[i] += 0.000001
-        else:
-            r_max[i] -= 0.000001
-print('eps: ', epsilon_1)
+
+        return epsilon_1[i]
+
+    res = minimize(func, 2E-3, method='nelder-mead', options={'xatol': 1e-8, 'disp': True})
+    print(f"r_max:\t {res.x[0]*1000.:0.3f}mm")
+
 print('r_max: ', r_max)
 print('Bo: ', bo)
 # print('eps: ', epsilon_1)

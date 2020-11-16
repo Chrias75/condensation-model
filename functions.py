@@ -204,7 +204,9 @@ def c_p_mixture(x, t):
 
 def c_drag(r_d, theta_max, theta_min, rey, d_hyd):
     h_d = r_d * (1 - np.cos(np.deg2rad((theta_max + theta_min) / 2)))
+    h_d = r_d
     re_drop = rey * h_d / d_hyd
+    print("re_drop", re_drop)
     return 0.28 + (6 / np.sqrt(re_drop)) + (21 / re_drop)
 
 
