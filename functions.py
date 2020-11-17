@@ -136,6 +136,9 @@ def f_grav_vert(r_d, density_cond, theta_max, theta_min):
     return density_cond * 9.81 * np.pi / 3. * r_d ** 3 * (2. + np.cos(np.deg2rad((theta_max + theta_min) / 2.))) * \
         (1. - np.cos(np.deg2rad((theta_max + theta_min) / 2.))) ** 2
 
+def droplet_major_radius(r_d, theta_max, theta_min):
+    """ Calculate majore radius of elliptical droplet with height r_d """
+    pass
 
 def f_surf_tens(r_d, gamma, theta_max, theta_min, aspect_ratio):
     r_cl = r_d * np.sin(np.deg2rad((theta_max + theta_min) / 2))
@@ -214,12 +217,13 @@ def c_p_mixture(x, t):
     print(c_pv)
     return (1 - x) * c_pg + x * c_pv
 
+def droplet_height(r_d, theta_max, theta_min):
+    return r_d * (1 - np.cos(np.deg2rad((theta_max + theta_min) / 2)))
+
 
 def c_drag(r_d, theta_max, theta_min, rey, d_hyd):
-    h_d = r_d * (1 - np.cos(np.deg2rad((theta_max + theta_min) / 2)))
-    h_d = r_d
+    h_d = droplet_height(r_d, theta_max, theta_min)
     re_drop = rey * h_d / d_hyd
-    print("re_drop", re_drop)
     return 0.28 + (6 / np.sqrt(re_drop)) + (21 / re_drop)
 
 
