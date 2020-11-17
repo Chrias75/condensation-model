@@ -196,9 +196,9 @@ def saturation_line_bruowers(t, p):
 def c_p_mixture(x, t):
     """gives the molar specific heat capacity of humid air with a water mass fraction x"""
     c_pg = fpa.dry_air_heat_capacity(t) * fpa.MOLES_MASS_AIR
-    print(c_pg)
+    # print(c_pg)
     c_pv = fpw.heat_capacity(t) * fpa.MOLES_MASS_VAPOUR
-    print(c_pv)
+    # print(c_pv)
     return (1 - x) * c_pg + x * c_pv
 
 
@@ -206,8 +206,13 @@ def c_drag(r_d, theta_max, theta_min, rey, d_hyd):
     h_d = r_d * (1 - np.cos(np.deg2rad((theta_max + theta_min) / 2)))
     h_d = r_d
     re_drop = rey * h_d / d_hyd
-    print("re_drop", re_drop)
-    return 0.28 + (6 / np.sqrt(re_drop)) + (21 / re_drop)
+    # print("re_drop", re_drop)
+    if re_drop < 20.:
+        return 24 / re_drop
+    elif 20. < re_drop < 80.:
+        return 1.22
+    else:
+        return 0.28 + (6 / np.sqrt(re_drop)) + (21 / re_drop)
 
 
 def log_mean(x, y):

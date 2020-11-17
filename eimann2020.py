@@ -9,7 +9,7 @@ from scipy.optimize import minimize
 # Input
 ####################################################################################
 
-config_file = 'experiment_config.cfg'
+# config_file = 'experiment_config.cfg'
 config_file = 'model_config.cfg'
 data = '/home/brue_ch/Auswertungen/rH_variable/Profil/data_rH_variable_all.dat'
 result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_modell.dat'
@@ -33,7 +33,7 @@ print('rho_a: ', rho_b)
 # surface tension
 surf_tens = PropsSI('SURFACE_TENSION', 'T', t_mean + 273.15, 'Q', 1, 'Water')
 print('gamma: ', surf_tens)
-r_max = np.full(re.shape, 0.001)
+r_max = np.full(re.shape, 0.0016)
 bo = rho_c * g * (2 * r_max) ** 2 / surf_tens
 print('Bo_0: ', bo)
 
@@ -45,7 +45,7 @@ print('theta_max: ', theta_a)
 theta_m = theta_a * (0.01 * bo ** 2 - 0.155 * bo + 0.97)
 print('theta_min: ', theta_m)
 print('Re_d: ', re * r_max * (1 - np.cos(np.deg2rad((theta_a + theta_m) / 2))) / d_h)
-c_d = c_drag(r_max, theta_a, theta_m, re, d_h)
+c_d = np.vectorize(c_drag)(r_max, theta_a, theta_m, re, d_h)
 print('C_d: ', c_d)
 
 u = re * HAPropsSI('mu', 'T', t_mean + 273.15, 'P', p_standard, 'R', rH) / \
@@ -55,36 +55,36 @@ f_g = np.zeros(re.shape)
 f_s = np.zeros(re.shape)
 f_d = np.zeros(re.shape)
 
-ar_test = np.linspace(0.00000001, 5.0e-3, 100)
-plt.figure(1)
-plt.title('horizontal')
-plt.plot(ar_test, f_drag(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m), label='F_d')
-plt.plot(ar_test, f_grav(ar_test, rho_c), label='F_g')
-plt.plot(ar_test, np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta), label='F_s')
-plt.legend(loc=2)
-plt.figure(2)
-plt.title('vertical')
-plt.plot(ar_test, f_drag_vert(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m), label='F_d')
-plt.plot(ar_test, np.vectorize(f_grav_vert)(ar_test, rho_c, theta_a, theta_m), label='F_g')
-plt.plot(ar_test, np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta), label='F_s')
-plt.legend(loc=2)
-plt.figure(3)
-plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m) ** 2
-                   + f_grav(ar_test, rho_c) ** 2
-                   - np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta) ** 2), label='sum F')
-# plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m)
+# ar_test = np.linspace(0.00000001, 5.0e-3, 100)
+# plt.figure(1)
+# plt.title('horizontal')
+# plt.plot(ar_test, f_drag(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m), label='F_d')
+# plt.plot(ar_test, f_grav(ar_test, rho_c), label='F_g')
+# plt.plot(ar_test, np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta), label='F_s')
+# plt.legend(loc=2)
+# plt.figure(2)
+# plt.title('vertical')
+# plt.plot(ar_test, f_drag_vert(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m), label='F_d')
+# plt.plot(ar_test, np.vectorize(f_grav_vert)(ar_test, rho_c, theta_a, theta_m), label='F_g')
+# plt.plot(ar_test, np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta), label='F_s')
+# plt.legend(loc=2)
+# plt.figure(3)
+# plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m) ** 2
+#                    + f_grav(ar_test, rho_c) ** 2
+#                    - np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta) ** 2), label='sum F')
+# # plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, re, d_h), theta_a, theta_m)
+# #                    + f_grav(ar_test, rho_c)
+# #                    - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta))), label='sum F')
+# plt.legend(loc=2)
+# plt.figure(4)
+# plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m)
 #                    + f_grav(ar_test, rho_c)
-#                    - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta))), label='sum F')
-plt.legend(loc=2)
-plt.figure(4)
-plt.plot(ar_test, (f_drag(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m)
-                   + f_grav(ar_test, rho_c)
-                   - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta))), label='sum F hori')
-plt.plot(ar_test, (f_drag_vert(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m)
-                   + np.vectorize(f_grav_vert)(ar_test, rho_c, theta_a, theta_m)
-                   - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta))), label='sum F vert')
-plt.legend(loc=2)
-#plt.show()
+#                    - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta))), label='sum F hori')
+# plt.plot(ar_test, (f_drag_vert(ar_test, rho_b, u, c_drag(ar_test, theta_a, theta_m, re, d_h), theta_a, theta_m)
+#                    + np.vectorize(f_grav_vert)(ar_test, rho_c, theta_a, theta_m)
+#                    - abs(np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta))), label='sum F vert')
+# plt.legend(loc=2)
+# plt.show()
 # exit(0)
 epsilon_1 = np.ones(re.shape)
 
@@ -92,33 +92,33 @@ for i, item in enumerate(re):
 
     def func(r):
         try:
-            bo[i] = rho_c[i] * g * (2 * r) ** 2 / surf_tens[i]
+            bo[i] = rho_c[i] * g * (2 * r) ** 2 / (surf_tens[i])
         except IndexError:
-            bo[i] = rho_c[i] * g * (2 * r) ** 2 / np.array([surf_tens])[i]
+            bo[i] = rho_c[i] * g * (2 * r) ** 2 / (np.array([surf_tens])[i])
         # print(bo)
         beta[i] = 1 + 0.096 * bo[i]
         theta_m = theta_a * (0.01 * bo[i] ** 2 - 0.155 * bo[i] + 0.97)
         c_d[i] = c_drag(r, theta_a, theta_m, re[i], d_h)
-
+        a = 1.
         if flow_direction.strip() == 'horizontal':
             f_g[i] = f_grav(r, rho_c[i])
             try:
-                f_s[i] = f_surf_tens(r, surf_tens[i], theta_a, theta_m, beta[i])
+                f_s[i] = a * f_surf_tens(r, surf_tens[i], theta_a, theta_m, beta[i])
             except TypeError:
-                f_s[i] = f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
+                f_s[i] = a * f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
             except IndexError:
-                f_s[i] = f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
+                f_s[i] = a * f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
             f_d[i] = f_drag(r, rho_b[i], u[i], c_d[i], theta_a, theta_m)
             epsilon_1[i] = f_g[i] ** 2 + f_d[i] ** 2 - f_s[i] ** 2
 
         elif flow_direction == 'vertical':
             f_g[i] = f_grav_vert(r, rho_c[i], theta_a, theta_m)
             try:
-                f_s[i] = f_surf_tens(r, surf_tens[i], theta_a, theta_m, beta[i])
+                f_s[i] = a * f_surf_tens(r, surf_tens[i], theta_a, theta_m, beta[i])
             except TypeError:
-                f_s[i] = f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
+                f_s[i] = a * f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
             except IndexError:
-                f_s[i] = f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
+                f_s[i] = a * f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
 
             f_d[i] = f_drag_vert(r, rho_b[i], u[i], c_d[i], theta_a, theta_m)
             epsilon_1[i] = f_g[i] + f_d[i] + f_s[i]
@@ -129,8 +129,9 @@ for i, item in enumerate(re):
 
         return epsilon_1[i]
 
-    res = minimize(func, 2E-3, method='nelder-mead', options={'xatol': 1e-8, 'disp': True})
+    res = minimize(func, 2e-3, method='nelder-mead', options={'xatol': 1e-8, 'disp': True})
     print(f"r_max:\t {res.x[0]*1000.:0.3f}mm")
+    r_max[i] = res.x[0]
 
 print('r_max: ', r_max)
 print('Bo: ', bo)
