@@ -125,7 +125,8 @@ def cos_theta_integrate(phi, theta_max, theta_min, d, aspect_ratio):
 
 
 def zeta(phi, r_cl, aspect_ratio):
-    return ((abs(np.cos(phi)) / r_cl) ** 3 + (abs(aspect_ratio * np.sin(phi)) / r_cl) ** 3) ** (-1. / 3.)
+    """ phi [rad]"""
+    return ((np.abs(np.cos(phi)) / r_cl) ** 3. + (np.abs(aspect_ratio * np.sin(phi)) / r_cl) ** 3.) ** (-1. / 3.)
 
 
 def f_grav(r_d, density_cond):
@@ -137,11 +138,11 @@ def f_grav_vert(r_d, density_cond, theta_max, theta_min):
         (1. - np.cos(np.deg2rad((theta_max + theta_min) / 2.))) ** 2
 
 def droplet_major_radius(r_d, theta_max, theta_min):
-    """ Calculate majore radius of elliptical droplet with height r_d """
-    pass
+    """ Calculate major contact line radius of elliptical droplet with a radius of r_d"""
+    return r_d * np.sin(np.deg2rad((theta_max + theta_min) / 2))
 
 def f_surf_tens(r_d, gamma, theta_max, theta_min, aspect_ratio):
-    r_cl = r_d * np.sin(np.deg2rad((theta_max + theta_min) / 2))
+    r_cl = droplet_major_radius(r_d, theta_max, theta_min) # m
     return gamma * quad(cos_theta_integrate, 0., 2. * np.pi, args=(theta_max, theta_min, r_cl, aspect_ratio,))[0]
 
 def Bo(rho, d, surf_tens, g=9.81):
