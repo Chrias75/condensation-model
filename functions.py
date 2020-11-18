@@ -113,6 +113,12 @@ def cos_theta(phi, theta_max, theta_min):
             (3. * (np.cos(theta_max_pi) - np.cos(theta_min_pi)) * phi ** 2 / np.pi ** 2) +
             np.cos(theta_max_pi))
 
+def minimum_contact_angle(Bo, theta_adv):
+    """ Calculate minimum contact angle Eimann 2020 (25)
+        theta_adv (deg/rad)
+        returns (deg/rad)
+    """
+    return theta_adv * (0.01 * Bo ** 2 - 0.155 * Bo + 0.97)
 
 def cos_theta_integrate(phi, theta_max, theta_min, d, aspect_ratio):
     return zeta(phi, d, aspect_ratio) * cos_theta(phi, theta_max, theta_min) * np.cos(phi)
@@ -135,6 +141,13 @@ def f_surf_tens(r_d, gamma, theta_max, theta_min, aspect_ratio):
     r_cl = r_d * np.sin(np.deg2rad((theta_max + theta_min) / 2))
     return gamma * quad(cos_theta_integrate, 0., 2. * np.pi, args=(theta_max, theta_min, r_cl, aspect_ratio,))[0]
 
+def Bo(rho, d, surf_tens, g=9.81):
+    """ Calculates Bond number """
+    return (rho * g * d ** 2) / surf_tens
+
+def aspect_ratio(Bo):
+    """ See Eimann 2020 (27)"""
+    return 1. + 0.096 * Bo
 
 def f_drag(r_d, density_air, v, coef_drag, theta_max, theta_min):
     theta_max_pi = np.deg2rad(theta_max)

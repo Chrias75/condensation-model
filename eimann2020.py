@@ -9,7 +9,7 @@ from scipy.optimize import minimize
 # Input
 ####################################################################################
 
-# config_file = 'experiment_config.cfg'
+config_file = 'experiment_config.cfg'
 config_file = 'model_config.cfg'
 data = '/home/brue_ch/Auswertungen/rH_variable/Profil/data_rH_variable_all.dat'
 result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_modell.dat'
@@ -34,15 +34,16 @@ print('rho_a: ', rho_b)
 surf_tens = PropsSI('SURFACE_TENSION', 'T', t_mean + 273.15, 'Q', 1, 'Water')
 print('gamma: ', surf_tens)
 r_max = np.full(re.shape, 0.0016)
-bo = rho_c * g * (2 * r_max) ** 2 / surf_tens
+
+bo = Bo(rho_c, r_max, surf_tens)
+beta = aspect_ratio(bo)
+half_d = beta * r_max
 print('Bo_0: ', bo)
 
-beta = 1 + 0.096 * bo
-half_d = beta * r_max
 print('d: ', half_d)
 print('beta: ', beta)
 print('theta_max: ', theta_a)
-theta_m = theta_a * (0.01 * bo ** 2 - 0.155 * bo + 0.97)
+theta_m = minimum_contact_angle(bo, theta_a)
 print('theta_min: ', theta_m)
 print('Re_d: ', re * r_max * (1 - np.cos(np.deg2rad((theta_a + theta_m) / 2))) / d_h)
 c_d = np.vectorize(c_drag)(r_max, theta_a, theta_m, re, d_h)
