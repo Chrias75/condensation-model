@@ -33,12 +33,16 @@ class TryTesting(unittest.TestCase):
 
 
     def test_surf_force(self):
+        # Trivial case: No surface force (theta_min == theta_max)
         gamma = 1.
+        aspect_ratio = 1.
+        r_d = 1
         theta_max = 105.
         theta_min = theta_max
-        aspect_ratio = 1.
-        r_cl = 1
-        #gamma * quad(cos_theta_integrate, 0., 2. * np.pi, args=(theta_max, theta_min, r_cl, aspect_ratio,))[0]
+        self.assertAlmostEqual(f_surf_tens(r_d, gamma, theta_max, theta_min, aspect_ratio), 0, 8)
+        theta_max = 125.
+        theta_min = theta_max
+        self.assertAlmostEqual(f_surf_tens(r_d, gamma, theta_max, theta_min, aspect_ratio), 0, 8)
 
 
     def test_zeta(self):
