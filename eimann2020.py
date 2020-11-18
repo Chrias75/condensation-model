@@ -10,11 +10,11 @@ from scipy.optimize import minimize
 ####################################################################################
 
 config_file = 'experiment_config.cfg'
-config_file = 'model_config.cfg'
-data = '/home/brue_ch/Auswertungen/rH_variable/Profil/data_rH_variable_all.dat'
-result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_modell.dat'
+# config_file = 'model_config.cfg'
+data = '/home/brue_ch/Auswertungen/rH_variable/Profil/data_rH_2000_31_5.dat'
+result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_2000_31_5_h_d.dat'
 re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, mf_int, mf_bulk, b, h, l, p_standard, \
-    theta_a, theta_r, flow_direction = read_config.read(config_file, data_file=None, switch='config')
+    theta_a, theta_r, flow_direction = read_config.read(config_file, data_file=data, switch='dat')
 
 ####################################################################################
 # Droplet Force Balance
@@ -93,15 +93,15 @@ for i, item in enumerate(re):
 
     def func(r):
         try:
-            bo[i] = rho_c[i] * g * (2 * r) ** 2 / (surf_tens[i])
+            bo[i] = Bo(rho_c[i], 2 * r, surf_tens[i])
         except IndexError:
-            bo[i] = rho_c[i] * g * (2 * r) ** 2 / (np.array([surf_tens])[i])
+            bo[i] = Bo(rho_c[i], 2 * r, np.array([surf_tens])[i])
         # print(bo)
-        beta[i] = 1 + 0.096 * bo[i]
-        theta_m = theta_a * (0.01 * bo[i] ** 2 - 0.155 * bo[i] + 0.97)
+        beta[i] = aspect_ratio(bo[i])
+        theta_m = minimum_contact_angle(bo[i], theta_a)
         c_d[i] = c_drag(r, theta_a, theta_m, re[i], d_h)
         a = 1.
-        if flow_direction.strip() == 'horizontal':
+        if flow_direction == 'horizontal':
             f_g[i] = f_grav(r, rho_c[i])
             try:
                 f_s[i] = a * f_surf_tens(r, surf_tens[i], theta_a, theta_m, beta[i])
@@ -136,12 +136,15 @@ for i, item in enumerate(re):
 
 print('r_max: ', r_max)
 print('Bo: ', bo)
+print('minimum contact angle: ', minimum_contact_angle(bo, theta_a))
 # print('eps: ', epsilon_1)
 print('f_g: ', f_g)
 print('f_s: ', f_s)
 print('f_d: ', f_d)
-# r_max = np.full(re.shape, 0.0012)
-exit(0)
+# overwriting the critical radius, if desired
+r_max = np.full(re.shape, 0.0007)
+print('r_max overwritten manually', r_max)
+# exit(0)
 ####################################################################################
 # Iteration
 ####################################################################################
@@ -215,7 +218,7 @@ x_bs, x_b = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_mean)
 x_is, x_i = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_i)
 # print('test: ', c_p_mixture(0.804, 94.))
 print('dp/dt: ', saturation_line_slope(t_i, p_standard))
-# print('dp/dt(Brouwers): ', saturation_line_bruowers(t_i))
+# print('dp/dt(Brouwers): ', saturation_line_brouwers(t_i))
 print('tangency: ', sigma_f_m / sigma_f_h * Sh / np.vectorize(Nu_sen)(re, pr, d_h, l) * (x_b - x_i) / (t_mean - t_i))
 print('suction_ht:', sigma_s_h)
 print('fog_ht', sigma_f_h)
