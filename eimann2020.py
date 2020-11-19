@@ -1,11 +1,9 @@
 import read_config
 from CoolProp.CoolProp import PropsSI
 from CoolProp.HumidAirProp import HAPropsSI
-import matplotlib.pyplot as plt
 from functions import *
 from scipy.optimize import minimize
 import logging
-
 
 ####################################################################################
 # Input
@@ -16,7 +14,7 @@ config_file = 'experiment_config.cfg'
 data = '/home/brue_ch/Auswertungen/rH_variable/Profil/data_rH_2000_31_5.dat'
 result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_2000_31_5_h_d.dat'
 re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, mf_int, mf_bulk, b, h, l, p_standard, \
-    theta_a, theta_r, flow_direction = read_config.read(config_file, data_file=data, switch='dat')
+ theta_a, theta_r, flow_direction = read_config.read(config_file, data_file=data, switch='dat')
 
 ####################################################################################
 # Logger Setup
@@ -26,6 +24,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+format_stream = logging.Formatter('%(levelname)s - %(message)s')
 
 fh = logging.FileHandler('%s.log' % config_file[:-4])
 fh.setLevel(logging.DEBUG)
@@ -34,7 +33,7 @@ logger.addHandler(fh)
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
-ch.setFormatter(formatter)
+ch.setFormatter(format_stream)
 logger.addHandler(ch)
 
 ####################################################################################
@@ -44,18 +43,20 @@ logger.addHandler(ch)
 d_h = (4 * b * h) / (2 * b + 2 * h)
 # surface tension
 surf_tens = PropsSI('SURFACE_TENSION', 'T', t_mean + 273.15, 'Q', 1, 'Water')
+# water and air density
 rho_c = fpw.density(t_w) * 1000
 rho_b = fpa.moist_air_density(p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in), t_mean)
-
+# initial value for critical radius
 r_max = np.full(re.shape, 0.0016)
-
+# initial values for Bond number, droplet aspect ratio, minimum contact angle and drag coefficient
 bo = Bo(rho_c, r_max, surf_tens)
 beta = aspect_ratio(bo)
 theta_m_0 = minimum_contact_angle(bo, theta_a)
 c_d = np.vectorize(c_drag)(r_max, theta_a, theta_m_0, re, d_h)
-
+# bulk velocity based on reynolds number
 u = re * HAPropsSI('mu', 'T', t_mean + 273.15, 'P', p_standard, 'R', rH) / \
     (d_h * fpa.moist_air_density(p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in), t_mean))
+# variable initialisation for forces and iteration
 f_g, f_s, f_d = np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape)
 epsilon_1 = np.ones(re.shape)
 
@@ -87,10 +88,10 @@ for i, item in enumerate(re):
             bo[i] = Bo(rho_c[i], 2 * r, surf_tens[i])
         except IndexError:
             bo[i] = Bo(rho_c[i], 2 * r, np.array([surf_tens])[i])
-        # print(bo)
         beta[i] = aspect_ratio(bo[i])
         theta_m = minimum_contact_angle(bo[i], theta_a)
         c_d[i] = c_drag(r, theta_a, theta_m, re[i], d_h)
+        # a: scaling factor for the deformation of the droplet due to flow. arbitrary value based on observation
         a = 1.
         if flow_direction == 'horizontal':
             f_g[i] = f_grav(r, rho_c[i])
@@ -113,7 +114,7 @@ for i, item in enumerate(re):
                 f_s[i] = a * f_surf_tens(r, np.array([surf_tens])[i], theta_a, theta_m, beta[i])
 
             f_d[i] = f_drag_vert(r, rho_b[i], u[i], c_d[i], theta_a, theta_m)
-            epsilon_1[i] = f_g[i] + f_d[i] + f_s[i]
+            epsilon_1[i] = f_g[i] + f_d[i] - abs(f_s[i])
 
         else:
             logger.critical('no flow direction given')
@@ -142,15 +143,16 @@ logger.info('r_max overwritten manually; r_max: {a}'.format(a=r_max))
 # heat transfer parameter initialisation
 ####################################################################################
 
+# wall temperature serves as initial interface temperature
 T_i_start = t_w
-jakob = fpa.moist_air_heat_capacity(t_mean, p_standard, rH * fpa.temperature2saturation_vapour_pressure(t_in)) * \
-        (t_mean - T_i_start) / fpw.enthalpy_evaporation(t_mean)
-
+# simplification, as jakob is using wall temperature and is assumed constant
+jakob = jakob(t_mean, T_i_start, t_in, p_standard, rH)
+# Eimanns correction factor for total heat transfer based on critical radius
 C = np.vectorize(correction_factor)(r_max)
 
 # Sherwood is gained analogously to Nusselt number with Schmidt instead of Prandtl number
 Sh = np.vectorize(Nu_sen)(re, sc, d_h, l)
-Nu_0 = np.vectorize(Nu_sen)(re, pr, d_h, l)
+# variable initialisation for heat transfer iteration
 h_d, Nu_g, B_i, h_g, h_t, q_t, t_i, sh_corr, nu_corr = np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape), \
                                                        np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape), \
                                                        np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape)
@@ -160,7 +162,7 @@ epsilon_2 = np.ones(re.shape)
 # more logging
 logger.debug('Ja: {a}'.format(a=jakob))
 logger.info('Correction Factor(r_max): {a}'.format(a=C))
-logger.debug('Nu_0: {a}'.format(a=Nu_0))
+logger.debug('Nu_0: {a}'.format(a=np.vectorize(Nu_sen)(re, pr, d_h, l)))
 logger.debug('Sh: {a}'.format(a=Sh))
 logger.debug('Sc: {a}'.format(a=sc))
 logger.debug('Pr: {a}'.format(a=pr))
@@ -176,8 +178,6 @@ for i, item in enumerate(re):
     logger.info('Re: {a}'.format(a=item))
     while abs(epsilon_2[i]) > 0.05:
         B_i[i] = driving_force_mt(t_i[i], p_standard, mf_bulk[i])
-        # print('mf_int: ', mf.mass_fraction_interface(p_standard, T_i[i]))
-        # print('mf_bulk: ', mf_bulk[i])
         h_d[i] = (0.347 * re[i]) / (1 + 1.75 * np.exp(-330.5 * B_i[i]))
         # sh_corr[i] = Sh[i] * \
         #     corr_fog_mt(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i]) * \
@@ -195,9 +195,7 @@ for i, item in enumerate(re):
         h_t[i] = (1 / h_d[i] + 1 / h_g[i]) ** (-1)
         q_t[i] = h_t[i] * (t_mean[i] - t_w[i])
         t_i[i] = t_w[i] + q_t[i] / h_d[i]
-        # print('t_i: ', t_i)
         epsilon_2[i] = T_i[i] - t_i[i]
-        # print('eps: ', epsilon)
         if t_i[i] > T_i[i]:
             T_i[i] += 0.01
         else:
@@ -209,6 +207,7 @@ p_v_mean = rH * fpa.temperature2saturation_vapour_pressure(t_mean)
 x_bs, x_b = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_mean)
 x_is, x_i = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_i)
 
+# final determination of the model nusselt numbers for latent and total heat transfer
 nu_lat = Nu_lat(Sh, pr, sc, jakob, B_i)
 q_lat = nu_lat * fpa.moist_air_thermal_conductivity(t_i, p_standard, p_v_in) * (t_mean - t_i) / d_h
 nu_t = h_t * d_h / fpa.moist_air_thermal_conductivity(t_mean, p_standard, p_v_mean)
@@ -219,15 +218,18 @@ sigma_s_m = corr_suction_mt(rH, t_i, t_mean, p_standard)
 sigma_f_h = corr_fog_ht(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean, p_standard)
 sigma_f_m = corr_fog_mt(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean, p_standard)
 
+# debugging info
 logger.debug('dp/dt: {a}'.format(a=saturation_line_slope(t_i, p_standard)))
 logger.debug('dp/dt(Brouwers): {a}'.format(a=saturation_line_brouwers(t_i, p_standard)))
-logger.debug('tangency: {a}'.format(a=sigma_f_m / sigma_f_h * Sh / np.vectorize(Nu_sen)(re, pr, d_h, l) * (x_b - x_i) /
-                                      (t_mean - t_i)))
+logger.debug('tangency: {a}'.format(a=sigma_f_m / sigma_f_h * Sh / np.vectorize(Nu_sen)(re, pr, d_h, l) *
+                                    (x_b - x_i) / (t_mean - t_i)))
 logger.debug('suction_ht: {a}'.format(a=sigma_s_h))
 logger.debug('fog_ht: {a}'.format(a=sigma_f_h))
 logger.debug('suction_mt: {a}'.format(a=sigma_s_m))
 logger.debug('fog_mt: {a}'.format(a=sigma_f_m))
 logger.debug('B_i: {a}'.format(a=B_i))
+
+# output info
 logger.info('Nu_lat: {a}'.format(a=nu_lat))
 logger.info('q_lat: {a}'.format(a=q_lat))
 logger.debug('Nu_g: {a}'.format(a=Nu_g))
@@ -236,7 +238,6 @@ logger.debug('h_g: {a}'.format(a=h_g))
 logger.info('h_t: {a}'.format(a=h_t))
 logger.info('Nu_t: {a}'.format(a=nu_t))
 logger.info('q_t: {a}'.format(a=q_t))
-
 
 # writing the data into result file
 
