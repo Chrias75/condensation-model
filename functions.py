@@ -62,6 +62,11 @@ def mass_fraction_interface(pressure, temp_interface):
     return (pressure - p_sat) / (pressure - (1 - M_v / M_air) * p_sat)
 
 
+def jakob(t_mean, t_interface, t_bulk, pressure, rel_hum):
+    """ Jakob number/ ratio of sensible to latent heat """
+    return fpa.moist_air_heat_capacity(t_mean, pressure, rel_hum * fpa.temperature2saturation_vapour_pressure(t_bulk)) * \
+        (t_mean - t_interface) / fpw.enthalpy_evaporation(t_mean)
+
 def mass_fraction_bulk(mass_flow_ncg, mass_flow_water):
     """ noncondensable gas mass fraction in the bulk flow """
     return mass_flow_ncg / (mass_flow_water + mass_flow_ncg)
