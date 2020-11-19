@@ -100,7 +100,7 @@ def density(temperature):
     INPUT:
         temperature                 : temperature [C]
 
-    RETURNS: density [kg/m^3]
+    RETURNS: density [g/cm^3]
     """
     __temp = temperature + 273.15
     __c__ = [-1.34324009e-10, 1.89316803e-07, -1.02599899e-04, 2.46788875e-02, -1.19662999e+00]
