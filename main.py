@@ -1,18 +1,18 @@
-import read_config
 from CoolProp.CoolProp import PropsSI
 from CoolProp.HumidAirProp import HAPropsSI
 from functions import *
 from scipy.optimize import minimize
 import logging
 
+from helpers import read_config
 ####################################################################################
 # Input
 ####################################################################################
 
-config_file = 'experiment_config.cfg'
-# config_file = 'model_config.cfg'
-data = '/home/brue_ch/Auswertungen/rH_variable/Profil/data_rH_2000_31_5.dat'
-result_filename = '/home/brue_ch/Auswertungen/rH_variable/Profil/eimann_2000_31_5_h_d.dat'
+config_file = 'config/experiment_config.cfg'
+# config_file = 'config/model_config.cfg'
+data = 'data/data_rH_2000_27_5.dat'
+result_filename = 'data/eimann_2000_31_5_h_d.dat'
 re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, mf_int, mf_bulk, b, h, l, p_standard, \
  theta_a, theta_r, flow_direction = read_config.read(config_file, data_file=data, switch='dat')
 

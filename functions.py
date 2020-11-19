@@ -1,5 +1,5 @@
-import fluid_properties_air as fpa
-import fluid_properties_water as fpw
+import helpers.fluid_properties_air as fpa
+import helpers.fluid_properties_water as fpw
 import numpy as np
 from scipy.integrate import quad
 

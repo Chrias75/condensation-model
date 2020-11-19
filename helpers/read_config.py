@@ -1,6 +1,6 @@
 import configparser
 import numpy as np
-import fluid_properties_air as fpa
+import helpers.fluid_properties_air as fpa
 import functions as mf
 
 

@@ -8,7 +8,7 @@
 # #####################################################################################################################
 
 from numpy import exp, log, log10
-import fluid_properties_water as fpw
+import helpers.fluid_properties_water as fpw
 
 # #####################################################################################################################
 # CONSTANTS
@@ -302,7 +302,7 @@ def relativehumidity(temperature, dewpoint, matter='water'):
     FUNCTION: relativehumidity
 
     DESCRIPTION: vapour pressure as a function of dewpoint and temperature
-        
+
     INPUT:
         vapour_pressure                 : vapour pressure [Pa]
         saturation_vapour_pressure      : saturation vapour pressure [Pa]
@@ -369,7 +369,7 @@ def real_gas_factor(temperature, pressure):
     FUNCTION: real_gas_factor
 
     DESCRIPTION: calculates the real gas factor as a function of pressure and temperature
-        
+
     INPUT:
         temperature                            : temperature [C]
         pressure                               : pressure [bar]
@@ -418,7 +418,7 @@ def dry_air_density(temperature, pressure):
     FUNCTION: dry_air_density
 
     DESCRIPTION: density of dry air as a function of pressure and temperature
-        
+
     INPUT:
         __temperature__             : temperature [C]
         __pressure__                : pressure [bar]
