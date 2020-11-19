@@ -71,7 +71,7 @@ def read(config_file, data_file=None, switch='config'):
         p_standard = config['other'].getfloat('pressure')
         theta_a = config['other'].getfloat('ascending_contact_angle')
         theta_r = config['other'].getfloat('receding_contact_angle')
-        flow_direction = str(config['other'].get('flow_direction')).strip()
+        flow_direction = config['other'].get('flow_direction')
         re = np.loadtxt(data_file, skiprows=1, usecols=2)
         pr = np.loadtxt(data_file, skiprows=1, usecols=4)
 
