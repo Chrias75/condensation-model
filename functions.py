@@ -1,5 +1,5 @@
-import fluid_properties_air as fpa
-import fluid_properties_water as fpw
+import helpers.fluid_properties_air as fpa
+import helpers.fluid_properties_water as fpw
 import numpy as np
 from scipy.integrate import quad
 
@@ -330,6 +330,10 @@ def f_grav_vert(r_d, density_cond, theta_max, theta_min):
     return density_cond * 9.81 * np.pi / 3. * r_d ** 3 * (2. + np.cos(np.deg2rad((theta_max + theta_min) / 2.))) * \
         (1. - np.cos(np.deg2rad((theta_max + theta_min) / 2.))) ** 2
 
+def droplet_major_radius(r_d, theta_max, theta_min):
+    """ Calculate major contact line radius of elliptical droplet with a radius of r_d"""
+    return r_d * np.sin(np.deg2rad((theta_max + theta_min) / 2))
+
 
 def f_surf_tens(r_d, gamma, theta_max, theta_min, aspect):
     """ surface tension force as a function of the droplet radius
@@ -487,6 +491,9 @@ def c_p_mixture(x, t):
     c_pv = fpw.heat_capacity(t) * fpa.MOLES_MASS_VAPOUR
     return (1 - x) * c_pg + x * c_pv
 
+def droplet_height(r_d, theta_max, theta_min):
+    return r_d * (1 - np.cos(np.deg2rad((theta_max + theta_min) / 2)))
+
 
 def c_drag(r_d, theta_max, theta_min, rey, d_hyd):
     """ drag coefficient for a wide range of droplet reynolds numbers as assembled by
@@ -513,7 +520,6 @@ def c_drag(r_d, theta_max, theta_min, rey, d_hyd):
     h_d = r_d * (1 - np.cos(np.deg2rad((theta_max + theta_min) / 2)))
     h_d = r_d
     re_drop = rey * h_d / d_hyd
-    # print("re_drop", re_drop)
     if re_drop < 20.:
         return 24 / re_drop
     elif 20. < re_drop < 80.:

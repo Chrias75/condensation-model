@@ -1,7 +1,6 @@
 ## Condensation-model (work in progress)
 implementation of a condensation model for comparison with experimental data
 
-
 ### Calculations based on 
 Eimann et al. DOI: 10.1016/j.ijheatmasstransfer.2020.119734
 
