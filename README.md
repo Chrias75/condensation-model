@@ -20,3 +20,14 @@ and the CoolProp Module DOI: 10.1021/ie4033999 (http://www.coolprop.org/index.ht
 
 ### Tests
 ``` python3 test.py ```
+
+### How To
+heat transfer model can be calculated by config file only or config file and data file.
+data file should be space or comma separated value table and has to be entered in
+```eimann2020.py```
+geometrical info and contact angles have to be specified in the config file.
+
+critical droplet radius is calculated from droplet force balance and entered into heat transfer calculation.
+it can also be overwritten manually to match experimental data.
+
+results are output into a specified output file
