@@ -40,13 +40,13 @@ def Nu_sen(reynolds, prandtl, dia_hydr, length):
         return (1 - gamma) * Nu_lam(2300, prandtl, dia_hydr, length) + gamma * Nu_turb(10000, prandtl, dia_hydr, length)
 
 
-def Nu_lat(sherwood, prandtl, schmidt, jakob, B_i):
+def Nu_lat(sherwood, prandtl, schmidt, jakob, b_i):
     """ latent Nusselt number according to
         G. Caruso, D. Di Vitale Maio, Heat and mass transfer analogy applied to condensation in the presence of
         noncondensable gases inside inclined tubes, Int. J. Heat Mass Transf. 68 (2014) 401–414,
         doi: 10.1016/j.ijheatmasstransfer.2013.09.049
     """
-    return sherwood * prandtl * B_i * (schmidt * jakob) ** (-1)
+    return sherwood * prandtl * b_i * (schmidt * jakob) ** (-1)
 
 
 def mass_fraction_interface(pressure, temp_interface):
@@ -65,6 +65,15 @@ def mass_fraction_interface(pressure, temp_interface):
 def mass_fraction_bulk(mass_flow_ncg, mass_flow_water):
     """ noncondensable gas mass fraction in the bulk flow """
     return mass_flow_ncg / (mass_flow_water + mass_flow_ncg)
+
+
+def driving_force_mt(t_int, pressure, mf_bulk):
+    """ driving force for the mass transfer to the condensate interface
+        F. Eimann, S. Zheng, C. Philipp, T. Fieback, U. Gross, Convective dropwise condensation out of humid air inside
+        a horizontal channel – experimental investigation of the condensate heat transfer resistance, Int. J. Heat Mass
+        Transf. 127 (2018) 448–464, doi: 10.1016/j.ijheatmasstransfer.2018.08.015
+    """
+    return np.log(mass_fraction_interface(pressure, t_int) / mf_bulk)
 
 
 def corr_suction_ht(sher, nuss, pran, schm, rh, t_int, t, p):
