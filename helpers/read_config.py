@@ -7,13 +7,6 @@ import helpers.fluid_properties_air as fpa
 import functions as mf
 
 
-def log_mean(x, y):
-    x = np.array(x)
-    y = np.array(y)
-    __logmean = (np.maximum(x, y) - np.minimum(x, y)) / (np.log((np.maximum(x, y)) / (np.minimum(x, y))))
-    return __logmean
-
-
 def read(config_file, data_file=None, switch='config'):
     if switch == 'config':
         config = configparser.ConfigParser()
@@ -22,6 +15,7 @@ def read(config_file, data_file=None, switch='config'):
         re = np.array([cfg_numbers.getfloat('reynolds')])
         pr = np.array([cfg_numbers.getfloat('prandtl')])
         sc = np.array([cfg_numbers.getfloat('schmidt')])
+        ri = np.array([cfg_numbers.getfloat('richardson')])
 
         cfg_temp = config['temperatures']
         t_in = np.array([cfg_temp.getfloat('t_in')])
@@ -62,7 +56,7 @@ def read(config_file, data_file=None, switch='config'):
                 print('no mass flow or mass fractions were given.')
                 mf_int, mf_bulk = [], []
 
-        return re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, \
+        return re, pr, ri, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, \
             rh, mf_int, mf_bulk, b, h, l, p_standard, theta_a, theta_r, flow_direction
     elif switch == 'dat' and data_file is not None:
         config = configparser.ConfigParser()
@@ -77,6 +71,7 @@ def read(config_file, data_file=None, switch='config'):
         flow_direction = config['other'].get('flow_direction')
         re = np.loadtxt(data_file, skiprows=1, usecols=2)
         pr = np.loadtxt(data_file, skiprows=1, usecols=4)
+        ri = np.loadtxt(data_file, skiprows=1, usecols=44)
 
         t_in = np.loadtxt(data_file, skiprows=1, usecols=28)
         t_out = np.loadtxt(data_file, skiprows=1, usecols=30)
@@ -85,7 +80,7 @@ def read(config_file, data_file=None, switch='config'):
         t_dp_in = np.loadtxt(data_file, skiprows=1, usecols=34)
         t_dp_out = np.loadtxt(data_file, skiprows=1, usecols=36)
         # rh = np.loadtxt(data_file, skiprows=1, usecols=45)
-        rh = fpa.relativehumidity(t_mean, log_mean(t_dp_in, t_dp_out))
+        rh = fpa.relativehumidity(t_mean, mf.log_mean(t_dp_in, t_dp_out))
 
         m_air = np.loadtxt(data_file, skiprows=1, usecols=50)
         m_water = np.loadtxt(data_file, skiprows=1, usecols=40)
@@ -97,7 +92,7 @@ def read(config_file, data_file=None, switch='config'):
                                               rh * fpa.temperature2saturation_vapour_pressure(t_in))) / \
              (fpa.diffusion_coefficient(t_mean) *
               fpa.moist_air_density(p_standard, rh * fpa.temperature2saturation_vapour_pressure(t_in), t_mean))
-        return re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, \
+        return re, pr, ri, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, \
             rh, mf_int, mf_bulk, b, h, l, p_standard, theta_a, theta_r, flow_direction
     else:
         print('switch not set or data file missing')

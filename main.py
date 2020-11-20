@@ -17,7 +17,7 @@ config_file = 'config/experiment_config.cfg'
 # config_file = 'config/model_config.cfg'
 data = 'data/data_rH_2000_27_5.dat'
 result_filename = 'data/eimann_2000_31_5_h_d.dat'
-re, pr, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, mf_int, mf_bulk, b, h, l, p_standard, \
+re, pr, ri, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, mf_int, mf_bulk, b, h, l, p_standard, \
  theta_a, theta_r, flow_direction = read_config.read(config_file, data_file=data, switch='dat')
 
 ####################################################################################
@@ -170,6 +170,7 @@ logger.debug('Nu_0: {a}'.format(a=np.vectorize(Nu_sen)(re, pr, d_h, l)))
 logger.debug('Sh: {a}'.format(a=Sh))
 logger.debug('Sc: {a}'.format(a=sc))
 logger.debug('Pr: {a}'.format(a=pr))
+logger.debug('Ri: {a}'.format(a=ri))
 logger.debug('t_mean: {a}'.format(a=t_mean))
 logger.debug('rh: {a}'.format(a=rH))
 logger.debug('T_i: {a}'.format(a=T_i))
