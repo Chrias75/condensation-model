@@ -1,3 +1,6 @@
+""" config reader
+    enters given config/data values into main.py in the right data formats
+"""
 import configparser
 import numpy as np
 import helpers.fluid_properties_air as fpa

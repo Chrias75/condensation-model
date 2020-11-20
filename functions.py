@@ -1,3 +1,6 @@
+""" function definitions
+    collection of all definitions given in literature required to calculate the force balance and heat transfer
+"""
 import helpers.fluid_properties_air as fpa
 import helpers.fluid_properties_water as fpw
 import numpy as np

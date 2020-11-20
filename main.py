@@ -1,3 +1,7 @@
+""" main script
+    given config/data is used to calculate the critical radius and heat transfer of a duct flow with condensation and
+    outputs the results in an output file
+"""
 from CoolProp.CoolProp import PropsSI
 from CoolProp.HumidAirProp import HAPropsSI
 from functions import *
