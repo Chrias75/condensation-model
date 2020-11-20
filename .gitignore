@@ -246,3 +246,8 @@ dmypy.json
 .prof
 
 # End of https://www.toptal.com/developers/gitignore/api/pycharm,python
+
+# data except example data
+data/*
+!data/data_rH_2000_31_5.dat
+!data/eimann_2000_31_5_h_d.dat.dat
