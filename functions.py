@@ -565,3 +565,25 @@ def log_mean(x, y):
     y = np.array(y)
     __logmean = (np.maximum(x, y) - np.minimum(x, y)) / (np.log((np.maximum(x, y)) / (np.minimum(x, y))))
     return __logmean
+
+
+def ref_temp(t_wall, t_bulk, r_d, nuss, l_char):
+    """ reference temperature for material properties as average temperature throughout the thermal boundary layer
+        Args:
+            t_wall:                 wall temperature [C]
+            t_bulk:                 bulk temperature [C]
+            r_d:                    droplet radius [m]
+            nuss:                   Nusselt number from the Correlation
+            l_char:                 characteristic length
+        Returns:
+            reference temperature of the boundary layer [C]
+    """
+    d = l_char / nuss
+    rx = np.linspace(0, r_d, 50)
+    ty = np.zeros(len(rx), 1)
+    for i in rx:
+        if rx[i] < d:
+            ty[i] = (t_bulk - t_wall) / d * rx[i] + t_wall
+        elif rx[i] >= d:
+            ty[i] = t_bulk
+    return np.trapz(ty, rx) / r_d
