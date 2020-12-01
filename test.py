@@ -1,14 +1,6 @@
 import unittest
-import numpy as np
-from functions import f_surf_tens
-from functions import cos_theta_integrate
-from functions import Bo
 from functions import aspect_ratio as ar
-from functions import minimum_contact_angle
-from functions import droplet_major_radius
-from functions import zeta
-from functions import cos_theta
-from functions import f_surf_tens
+from functions import *
 
 from CoolProp.CoolProp import PropsSI
 
@@ -97,6 +89,26 @@ class TryTesting(unittest.TestCase):
         theta_min_prog = minimum_contact_angle(Bo, theta_adv)
         theta_min_hand = 38.526 # deg
         self.assertAlmostEqual(theta_min_prog, theta_min_hand, 3)
+
+    def test_projected_area(self):
+        r = 1e-3
+        rho = 1.
+        u = 0.4
+        c_d = 0.44
+        theta_max = 111.4
+        theta_min = 74.2
+        a_proj = f_drag(r, rho, u, c_d, theta_max, theta_min) / (0.5 * rho * u ** 2 * c_d)
+        theta_max_pi = np.deg2rad(theta_max)
+        theta_min_pi = np.deg2rad(theta_min)
+        beta = np.pi - theta_max_pi
+        l_f = np.sin(theta_max_pi) * (1. - np.cos(theta_min_pi)) / (np.sin(theta_min_pi) * (1. - np.cos(theta_max_pi)))
+        l_1 = l_f / (1. + l_f)
+        l_2 = 1. / (1. + l_f)
+        a_eimann = 4 * r ** 2 * (0.5 * l_1 ** 2 / np.sin(beta) ** 2 * theta_min_pi + 0.5 * l_1 ** 2 / np.tan(beta) +
+                                 0.5 * l_2 ** 2 / np.sin(theta_min_pi) ** 2 * theta_min_pi -
+                                 0.5 * l_2 ** 2 / np.tan(theta_min_pi))
+        self.assertAlmostEqual(a_proj, a_eimann, 5)
+
 
 #np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta)
 if __name__ == "__main__":
