@@ -288,7 +288,8 @@ def cos_theta_integrate(phi, theta_max, theta_min, r, aspect):
         Returns:
             product of azimutal radius, cosine of the contact angle and cosine of the azimutal angle
     """
-    return zeta(phi, r, aspect) * cos_theta(phi, theta_max, theta_min) * np.cos(phi)
+    # return zeta(phi, r, aspect) * cos_theta(phi, theta_max, theta_min) * np.cos(phi)
+    return cos_theta(phi, theta_max, theta_min) * np.cos(phi)
 
 
 def zeta(phi, r_cl, aspect):
@@ -333,9 +334,27 @@ def f_grav_vert(r_d, density_cond, theta_max, theta_min):
     return density_cond * 9.81 * np.pi / 3. * r_d ** 3 * (2. + np.cos(np.deg2rad((theta_max + theta_min) / 2.))) * \
         (1. - np.cos(np.deg2rad((theta_max + theta_min) / 2.))) ** 2
 
+
 def droplet_major_radius(r_d, theta_max, theta_min):
     """ Calculate major contact line radius of elliptical droplet with a radius of r_d"""
     return r_d * np.sin(np.deg2rad((theta_max + theta_min) / 2))
+
+
+def f_surf_tens_ei(r_d, gamma, theta_max, theta_min, aspect):
+    """ surface tension force as calculated in Eimanns matlab Skript following
+        C.W. Extrand, Y. Kumagai, Liquid Drops on an Inclined Plane: The Relation between Contact Angles, Drop Shape,
+        and Retentive Force, J. Colloid Interface Science 170 (1995), 515-521, https://doi.org/10.1006/jcis.1995.1130
+        Args:
+            r_d:                droplet radius [m]
+            gamma:              surface tension [N/m]
+            theta_max:          maximum/ascending contact angle [deg]
+            theta_min:          minimum/receding contact angle [deg]
+            aspect:             aspect ratio of the droplets major to minor half widths
+        Returns:
+            surface tension force [N]
+    """
+    r_cl = droplet_major_radius(r_d, theta_max, theta_min)
+    return 4. / np.pi * gamma * (np.cos(np.deg2rad(theta_min)) - np.cos(np.deg2rad(theta_max)))
 
 
 def f_surf_tens(r_d, gamma, theta_max, theta_min, aspect):
@@ -352,8 +371,10 @@ def f_surf_tens(r_d, gamma, theta_max, theta_min, aspect):
         Returns:
             surface tension force [N]
     """
-    r_cl = r_d * np.sin(np.deg2rad((theta_max + theta_min) / 2))
-    return gamma * quad(cos_theta_integrate, 0., 2. * np.pi, args=(theta_max, theta_min, r_cl, aspect,))[0]
+    r_cl = droplet_major_radius(r_d, theta_max, theta_min)
+    # return gamma * quad(cos_theta_integrate, 0., np.pi, args=(theta_max, theta_min, r_cl, aspect,))[0]
+    return 2 * gamma * zeta(np.pi, r_cl, aspect) * quad(cos_theta_integrate, 0., np.pi, args=(theta_max, theta_min,
+                                                                                              r_cl, aspect,))[0]
 
 
 def Bo(rho, d, surf_tens, g=9.81):
@@ -494,6 +515,7 @@ def c_p_mixture(x, t):
     c_pv = fpw.heat_capacity(t) * fpa.MOLES_MASS_VAPOUR
     return (1 - x) * c_pg + x * c_pv
 
+
 def droplet_height(r_d, theta_max, theta_min):
     return r_d * (1 - np.cos(np.deg2rad((theta_max + theta_min) / 2)))
 
@@ -522,7 +544,7 @@ def c_drag(r_d, theta_max, theta_min, rey, d_hyd):
     """
     h_d = r_d * (1 - np.cos(np.deg2rad((theta_max + theta_min) / 2)))
     h_d = r_d
-    re_drop = rey * h_d / d_hyd
+    re_drop = 2 * rey * h_d / d_hyd
     if re_drop < 20.:
         return 24 / re_drop
     elif 20. < re_drop < 80.:

@@ -12,6 +12,7 @@ from functions import f_surf_tens
 
 from CoolProp.CoolProp import PropsSI
 
+
 class TryTesting(unittest.TestCase):
     def test_surf_tension(self):
         sig_literature = 72.75E-3 # N/m  @ 20°C
@@ -43,6 +44,10 @@ class TryTesting(unittest.TestCase):
         theta_max = 125.
         theta_min = theta_max
         self.assertAlmostEqual(f_surf_tens(r_d, gamma, theta_max, theta_min, aspect_ratio), 0, 8)
+        theta_min = 85.
+        self.assertAlmostEqual(f_surf_tens(r_d, gamma, theta_max, theta_min, aspect_ratio),
+                               (-48. / 3.141592653589732 ** 3 * gamma * droplet_major_radius(r_d, theta_max, theta_min) *
+                                (np.cos(np.deg2rad(theta_min)) - np.cos(np.deg2rad(theta_max)))), 8)
 
 
     def test_zeta(self):

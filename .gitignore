@@ -251,3 +251,8 @@ dmypy.json
 data/*
 !data/data_rH_2000_31_5.dat
 !data/eimann_2000_31_5_h_d.dat.dat
+
+exp_data_rework.py
+mass_flow_calc.py
+surface_tension_test.py
+ri_correlation.py
