@@ -13,12 +13,12 @@ from helpers import read_config
 # Input
 ####################################################################################
 
-# config_file = 'config/experiment_config.cfg'
-config_file = 'config/model_config.cfg'
+config_file = 'config/experiment_config.cfg'
+# config_file = 'config/model_config.cfg'
 data = 'data/data_rH_2000_27_5.dat'
 result_filename = 'data/validation_test.dat'
 re, pr, ri, sc, t_in, t_out, t_w, t_mean, t_dp_in, t_dp_out, rH, mf_int, mf_bulk, b, h, l, p_standard, \
- theta_a, theta_r, flow_direction = read_config.read(config_file, data_file=None, switch='config')
+ theta_a, theta_r, flow_direction = read_config.read(config_file, data_file=data, switch='dat')
 
 ####################################################################################
 # Logger Setup
@@ -171,6 +171,7 @@ Sh = np.vectorize(Nu_sen)(re, sc, d_h, l)
 h_d, Nu_g, B_i, h_g, h_t, q_t, t_i, sh_corr, nu_corr = np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape), \
                                                        np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape), \
                                                        np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape)
+Nu_g_mod, h_g_mod, h_t_mod = np.zeros(re.shape), np.zeros(re.shape), np.zeros(re.shape)
 T_i = np.array(T_i_start)
 epsilon_2 = np.ones(re.shape)
 
@@ -205,10 +206,15 @@ for i, item in enumerate(re):
         nu_corr[i] = Nu_sen(re[i], pr[i], d_h, l) * \
             corr_suction_ht(Sh[i], Nu_sen(re[i], pr[i], d_h, l), pr[i], sc[i], rH[i], T_i[i], t_mean[i], p_standard)
         Nu_g[i] = C[i] * (nu_corr[i] + Nu_lat(sh_corr[i], pr[i], sc[i], jakob[i], B_i[i]))
+        Nu_g_mod[i] = C[i] * (nu_corr[i] + Nu_lat(sh_corr[i], pr[i], sc[i], jakob[i], B_i[i]) * (1 + 3.012 * ri[i]))
         h_g[i] = Nu_g[i] * \
             fpa.moist_air_thermal_conductivity(T_i[i], p_standard,
                                                rH[i] * fpa.temperature2saturation_vapour_pressure(t_in[i])) / d_h
+        h_g_mod[i] = Nu_g[i] * \
+                 fpa.moist_air_thermal_conductivity(T_i[i], p_standard,
+                                                    rH[i] * fpa.temperature2saturation_vapour_pressure(t_in[i])) / d_h
         h_t[i] = (1 / h_d[i] + 1 / h_g[i]) ** (-1)
+        h_t_mod[i] = (1 / h_d[i] + 1 / h_g_mod[i]) ** (-1)
         q_t[i] = h_t[i] * (t_mean[i] - t_w[i])
         t_i[i] = t_w[i] + q_t[i] / h_d[i]
         epsilon_2[i] = T_i[i] - t_i[i]
@@ -227,6 +233,7 @@ x_is, x_i = fpa.__moles_fraction_mixture__(p_v_in, p_standard, t_i)
 nu_lat = Nu_lat(Sh, pr, sc, jakob, B_i)
 q_lat = nu_lat * fpa.moist_air_thermal_conductivity(t_i, p_standard, p_v_in) * (t_mean - t_i) / d_h
 nu_t = h_t * d_h / fpa.moist_air_thermal_conductivity(t_mean, p_standard, p_v_mean)
+nu_t_mod = h_t_mod * d_h / fpa.moist_air_thermal_conductivity(t_mean, p_standard, p_v_mean)
 
 # correction factors for suction and fog debugging
 sigma_s_h = corr_suction_ht(Sh, np.vectorize(Nu_sen)(re, pr, d_h, l), pr, sc, rH, t_i, t_mean, p_standard)
@@ -254,15 +261,16 @@ logger.debug('h_g: {a}'.format(a=h_g))
 logger.info('h_t: {a}'.format(a=h_t))
 logger.info('Nu_t: {a}'.format(a=nu_t))
 logger.info('q_t: {a}'.format(a=q_t))
+logger.info('Nu_t_mod: {a}'.format(a=nu_t_mod))
 
 # writing the data into result file
 
-wdata = [[re], [pr], [nu_lat], [Nu_g], [nu_t], [Sh], [h_t], [h_d], [h_g], [q_t], [t_in], [t_out], [t_i], [t_dp_in],
-         [t_dp_out], [rH], [r_max]]
-wdata = np.reshape(wdata, (17, re.shape[0]))
+wdata = [[re], [pr], [nu_lat], [Nu_g], [nu_t], [nu_t_mod], [Sh], [h_t], [h_d], [h_g], [q_t], [t_in], [t_out], [t_i],
+         [t_dp_in], [t_dp_out], [rH], [r_max]]
+wdata = np.reshape(wdata, (18, re.shape[0]))
 wdata = wdata.T
 __f = open(result_filename, 'w')
-__f.write('Re Pr Nu_lat Nu_g Nu_t Sh h_t h_d h_g q_t T_in T_out T_i T_dp_in T_dp_out rH r_max\n')
+__f.write('Re Pr Nu_lat Nu_g Nu_t Nu_t_h Sh h_t h_d h_g q_t T_in T_out T_i T_dp_in T_dp_out rH r_max\n')
 for __l in wdata:
     __l = str(__l)
     __l = __l.replace('[', '')

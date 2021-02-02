@@ -354,7 +354,7 @@ def f_surf_tens_ei(r_d, gamma, theta_max, theta_min, aspect):
             surface tension force [N]
     """
     r_cl = droplet_major_radius(r_d, theta_max, theta_min)
-    return 4. / np.pi * gamma * (np.cos(np.deg2rad(theta_min)) - np.cos(np.deg2rad(theta_max)))
+    return 4. / np.pi * gamma * r_cl * (np.cos(np.deg2rad(theta_min)) - np.cos(np.deg2rad(theta_max)))
 
 
 def f_surf_tens(r_d, gamma, theta_max, theta_min, aspect):

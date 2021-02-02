@@ -107,7 +107,7 @@ class TryTesting(unittest.TestCase):
         a_eimann = 4 * r ** 2 * (0.5 * l_1 ** 2 / np.sin(beta) ** 2 * theta_min_pi + 0.5 * l_1 ** 2 / np.tan(beta) +
                                  0.5 * l_2 ** 2 / np.sin(theta_min_pi) ** 2 * theta_min_pi -
                                  0.5 * l_2 ** 2 / np.tan(theta_min_pi))
-        self.assertAlmostEqual(a_proj, a_eimann, 5)
+        self.assertAlmostEqual(a_proj, a_eimann, 8)
 
 
 #np.vectorize(f_surf_tens)(ar_test, surf_tens, theta_a, theta_m, beta)

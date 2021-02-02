@@ -256,3 +256,4 @@ exp_data_rework.py
 mass_flow_calc.py
 surface_tension_test.py
 ri_correlation.py
+helpers/error_calculation.py
